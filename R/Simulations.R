@@ -77,6 +77,8 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
 #'
 #' @param n_times Integer. Number of follow‑up time points.
 #' @param n_patients Integer. Number of patients to simulate.
+#' @param n_iterations Integer. Number of iterations to run the KM simulations on.
+#' @param true_rate Numeric vector. Vector of the "true" survival rates
 #' @param mean Numeric vector. Mean vector for the multivariate normal
 #'   distribution of log tumour‑size ratios.
 #' @param covariance Numeric matrix. Covariance matrix for the
