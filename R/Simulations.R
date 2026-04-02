@@ -93,7 +93,7 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
 #'   growth progression (default 1.2).
 #'
 #' @export
-run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
+run_iterations <- function(n_times, n_patients, n_iterations, true_rate, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
 
   surv_prob_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
   conf_low_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_times)
