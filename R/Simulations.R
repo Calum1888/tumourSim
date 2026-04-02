@@ -51,7 +51,7 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
   #'   \code{generate_binary_data()},
   #'   \code{event_definition()},
   #'   \code{survfit()}
-  
+
   # generate coefficients
   coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
   # simulate tumour‑size data
@@ -75,7 +75,7 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
 
 run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
   #' Executes \code{n_iterations}s of the single Kaplan-Meier iteration in the function \code{run_single_simulation}.
-  #' 
+  #'
   #' @param n_times Integer. Number of follow‑up time points.
   #' @param n_patients Integer. Number of patients to simulate.
   #' @param mean Numeric vector. Mean vector for the multivariate normal
@@ -92,11 +92,13 @@ run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, 
   #'   patients; defaults to 0 (control arm).
   #' @param threshold Numeric. Threshold multiplier for defining tumour
   #'   growth progression (default 1.2).
-  
+  #'
+  #'   @export
+
   surv_prob_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
   conf_low_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_times)
   conf_high_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
-  
+
   for (i in seq_len(n_iterations)) {
     fit_summary <- run_single_simulation(
       n_times     = n_times,
@@ -113,7 +115,7 @@ run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, 
     conf_low_matrix[i, ]  <- fit_summary$lower
     conf_high_matrix[i, ] <- fit_summary$upper
   }
-  
+
   covered <- (sweep(conf_low_matrix, 2, true_rate, "<=") & sweep(conf_high_matrix, 2, true_rate, ">="))
   coverage <- colMeans(covered, na.rm = TRUE)
   ci_width <- colMeans(conf_high_matrix - conf_low_matrix)
