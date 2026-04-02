@@ -1,3 +1,5 @@
+library(survival)
+
 #' Run a single tumour‑progression simulation replicate
 #'
 #' Executes one full iteration of the tumour‑progression simulation
@@ -114,12 +116,11 @@ run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, 
     conf_high_matrix[i, ] <- fit_summary$upper
   }
 
-  covered <- (sweep(conf_low_matrix, 2, true_rate, "<=") & sweep(conf_high_matrix, 2, true_rate, ">="))
-  coverage <- colMeans(covered, na.rm = TRUE)
+  #covered <- (sweep(conf_low_matrix, 2, true_rate, "<=") & sweep(conf_high_matrix, 2, true_rate, ">="))
+  #coverage <- colMeans(covered, na.rm = TRUE)
   ci_width <- colMeans(conf_high_matrix - conf_low_matrix)
   mean_surv <- colMeans(surv_prob_matrix)
   return(data.frame(Rate = round(mean_surv, 3),
-                    Coverage = coverage,
                     CI_Width = round(ci_width, 3)
                     ))
 }
