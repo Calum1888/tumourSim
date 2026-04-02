@@ -1,56 +1,54 @@
-library(docstring)
-
+#' Run a single tumour‑progression simulation replicate
+#'
+#' Executes one full iteration of the tumour‑progression simulation
+#' pipeline, including coefficient generation, tumour‑size simulation,
+#' tumour‑size recovery, new‑lesion probability computation, binary
+#' lesion generation, event definition, and Kaplan–Meier estimation.
+#'
+#' This function represents one Monte Carlo replicate and is intended
+#' to be called repeatedly inside a simulation loop.
+#'
+#' @param n_times Integer. Number of follow‑up time points.
+#' @param n_patients Integer. Number of patients to simulate.
+#' @param mean Numeric vector. Mean vector for the multivariate normal
+#'   distribution of log tumour‑size ratios.
+#' @param covariance Numeric matrix. Covariance matrix for the
+#'   multivariate normal distribution.
+#' @param alpha Numeric scalar. Baseline intercept parameter for the
+#'   logistic new‑lesion model.
+#' @param beta Numeric scalar. Treatment‑effect parameter for the
+#'   logistic new‑lesion model.
+#' @param gamma Numeric scalar. Effect of previous tumour size in the
+#'   logistic new‑lesion model.
+#' @param R Numeric scalar or vector. Treatment indicator(s) for
+#'   patients; defaults to 0 (control arm).
+#' @param threshold Numeric. Threshold multiplier for defining tumour
+#'   growth progression (default 1.2).
+#'
+#' @return A \code{summary.survfit} object containing survival
+#'   probabilities and confidence intervals at times
+#'   \code{1:n_times}.
+#'
+#' @details
+#' The simulation proceeds through the following steps:
+#' \enumerate{
+#'   \item Generate logistic‑model coefficients.
+#'   \item Simulate baseline tumour sizes and log tumour‑size ratios.
+#'   \item Recover tumour sizes over time using the recursive nadir rule.
+#'   \item Compute new‑lesion probabilities at each time point.
+#'   \item Generate binary new‑lesion indicators.
+#'   \item Define progression events based on lesions or tumour growth.
+#'   \item Fit a Kaplan–Meier curve and extract survival estimates.
+#' }
+#'
+#' @seealso \code{generate_coefficients()},
+#'   \code{generate_continuous_data()},
+#'   \code{recover_tumour_sizes()},
+#'   \code{compute_new_lesion_probability()},
+#'   \code{generate_binary_data()},
+#'   \code{event_definition()},
+#'   \code{survfit()}
 run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, beta, gamma, R, threshold = 1.2) {
-  #' Run a single tumour‑progression simulation replicate
-  #'
-  #' Executes one full iteration of the tumour‑progression simulation
-  #' pipeline, including coefficient generation, tumour‑size simulation,
-  #' tumour‑size recovery, new‑lesion probability computation, binary
-  #' lesion generation, event definition, and Kaplan–Meier estimation.
-  #'
-  #' This function represents one Monte Carlo replicate and is intended
-  #' to be called repeatedly inside a simulation loop.
-  #'
-  #' @param n_times Integer. Number of follow‑up time points.
-  #' @param n_patients Integer. Number of patients to simulate.
-  #' @param mean Numeric vector. Mean vector for the multivariate normal
-  #'   distribution of log tumour‑size ratios.
-  #' @param covariance Numeric matrix. Covariance matrix for the
-  #'   multivariate normal distribution.
-  #' @param alpha Numeric scalar. Baseline intercept parameter for the
-  #'   logistic new‑lesion model.
-  #' @param beta Numeric scalar. Treatment‑effect parameter for the
-  #'   logistic new‑lesion model.
-  #' @param gamma Numeric scalar. Effect of previous tumour size in the
-  #'   logistic new‑lesion model.
-  #' @param R Numeric scalar or vector. Treatment indicator(s) for
-  #'   patients; defaults to 0 (control arm).
-  #' @param threshold Numeric. Threshold multiplier for defining tumour
-  #'   growth progression (default 1.2).
-  #'
-  #' @return A \code{summary.survfit} object containing survival
-  #'   probabilities and confidence intervals at times
-  #'   \code{1:n_times}.
-  #'
-  #' @details
-  #' The simulation proceeds through the following steps:
-  #' \enumerate{
-  #'   \item Generate logistic‑model coefficients.
-  #'   \item Simulate baseline tumour sizes and log tumour‑size ratios.
-  #'   \item Recover tumour sizes over time using the recursive nadir rule.
-  #'   \item Compute new‑lesion probabilities at each time point.
-  #'   \item Generate binary new‑lesion indicators.
-  #'   \item Define progression events based on lesions or tumour growth.
-  #'   \item Fit a Kaplan–Meier curve and extract survival estimates.
-  #' }
-  #'
-  #' @seealso \code{generate_coefficients()},
-  #'   \code{generate_continuous_data()},
-  #'   \code{recover_tumour_sizes()},
-  #'   \code{compute_new_lesion_probability()},
-  #'   \code{generate_binary_data()},
-  #'   \code{event_definition()},
-  #'   \code{survfit()}
 
   # generate coefficients
   coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
@@ -73,27 +71,27 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
   return(summary(fit, times = seq_len(n_times), extend = TRUE))
 }
 
+#' Executes \code{n_iterations}s of the single Kaplan-Meier iteration in the function \code{run_single_simulation}.
+#'
+#' @param n_times Integer. Number of follow‑up time points.
+#' @param n_patients Integer. Number of patients to simulate.
+#' @param mean Numeric vector. Mean vector for the multivariate normal
+#'   distribution of log tumour‑size ratios.
+#' @param covariance Numeric matrix. Covariance matrix for the
+#'   multivariate normal distribution.
+#' @param alpha Numeric scalar. Baseline intercept parameter for the
+#'   logistic new‑lesion model.
+#' @param beta Numeric scalar. Treatment‑effect parameter for the
+#'   logistic new‑lesion model.
+#' @param gamma Numeric scalar. Effect of previous tumour size in the
+#'   logistic new‑lesion model.
+#' @param R Numeric scalar or vector. Treatment indicator(s) for
+#'   patients; defaults to 0 (control arm).
+#' @param threshold Numeric. Threshold multiplier for defining tumour
+#'   growth progression (default 1.2).
+#'
+#' @export
 run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
-  #' Executes \code{n_iterations}s of the single Kaplan-Meier iteration in the function \code{run_single_simulation}.
-  #'
-  #' @param n_times Integer. Number of follow‑up time points.
-  #' @param n_patients Integer. Number of patients to simulate.
-  #' @param mean Numeric vector. Mean vector for the multivariate normal
-  #'   distribution of log tumour‑size ratios.
-  #' @param covariance Numeric matrix. Covariance matrix for the
-  #'   multivariate normal distribution.
-  #' @param alpha Numeric scalar. Baseline intercept parameter for the
-  #'   logistic new‑lesion model.
-  #' @param beta Numeric scalar. Treatment‑effect parameter for the
-  #'   logistic new‑lesion model.
-  #' @param gamma Numeric scalar. Effect of previous tumour size in the
-  #'   logistic new‑lesion model.
-  #' @param R Numeric scalar or vector. Treatment indicator(s) for
-  #'   patients; defaults to 0 (control arm).
-  #' @param threshold Numeric. Threshold multiplier for defining tumour
-  #'   growth progression (default 1.2).
-  #'
-  #'   @export
 
   surv_prob_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
   conf_low_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_times)
