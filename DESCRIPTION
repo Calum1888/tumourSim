@@ -1,0 +1,16 @@
+Package: tumourSim
+Type: Package
+Title: Tumour Data and Survival Simulation Framework
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "Calum", "Regan",
+      email = "c_regan1888@outlook.com",
+      role = c("aut", "cre")
+    )
+  )
+Description: Simulation framework for log tumour size ratios and lesion probabilities. 
+    The true survival rates, Kaplan-Meier estimated survival rates and Copula estimated survival rates and metrics are calculated.
+License: MIT
+Encoding: UTF-8
+LazyData: true
