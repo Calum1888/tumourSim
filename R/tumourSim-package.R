@@ -3,6 +3,6 @@
 #' @importFrom stats rbinom runif
 #' @importFrom MASS mvrnorm
 #' @importFrom survival survfit
-#' @importFrom copula BiCopSelect
-#' @importFrom copula Bi CopCDF
+#' @importFrom VineCopula BiCopSelect
+#' @importFrom VineCopula Bi CopCDF
 "_PACKAGE"

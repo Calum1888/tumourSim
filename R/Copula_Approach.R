@@ -82,7 +82,6 @@ tumour_event <- function(tumour_size_data, threshold = 1.2) {
 #' Kaplan–Meier marginal CDFs.
 #'
 #' @param events A data frame with columns time and status.
-#' @param n_times Number of follow-up time points.
 #'
 #' @return A numeric vector of pseudo-observations in (0,1).
 pseudo_obs <- function(events) {
@@ -102,6 +101,43 @@ pseudo_obs <- function(events) {
   return(U)
 }
 
+#' Estimate marginal survival curves for lesion and tumour progression
+#'
+#' Computes non‑parametric Kaplan–Meier survival estimates for lesion
+#' progression and tumour progression at each discrete follow‑up time
+#' point. These marginal survival functions are required inputs for the
+#' copula‑based reconstruction of the progression‑free survival (PFS)
+#' curve.
+#'
+#' @param lesion_events A data frame with columns \code{time} and
+#'   \code{status}, typically produced by \code{lesion_event()}.
+#' @param tumour_events A data frame with columns \code{time} and
+#'   \code{status}, typically produced by \code{tumour_event()}.
+#' @param n_times Integer. Number of follow‑up time points at which to
+#'   evaluate the marginal survival curves.
+#'
+#' @return A data frame with two columns:
+#'   \describe{
+#'     \item{LESION}{Kaplan–Meier survival probability for lesion
+#'       progression at times \code{1:n_times}.}
+#'     \item{TUMOUR}{Kaplan–Meier survival probability for tumour
+#'       progression at times \code{1:n_times}.}
+#'   }
+#'
+#' @details
+#' The function fits two independent Kaplan–Meier curves—one for lesion
+#' progression and one for tumour progression—and evaluates each curve at
+#' the discrete time points \code{1, ..., n_times}. These marginal
+#' survival estimates are used in the survival‑copula identity for PFS.
+#'
+#' @examples
+#' \dontrun{
+#' lesion_events <- lesion_event(matrix(c(0,0,1, 0,0,0), 2, byrow=TRUE))
+#' tumour_events <- tumour_event(matrix(c(1,1.1,1.3, 1,1,1), 2, byrow=TRUE))
+#' copula_margin_estimation(lesion_events, tumour_events, n_times = 3)
+#' }
+#'
+#' @export
 copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
 
   fit_lesion <- survfit(Surv(time, status) ~ 1, data = lesion_events)
@@ -115,6 +151,51 @@ copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
   )
 }
 
+#' Estimate progression‑free survival using a copula model
+#'
+#' Computes a copula‑based estimate of the progression‑free survival (PFS)
+#' curve by combining marginal Kaplan–Meier survival functions for lesion
+#' progression and tumour progression with a dependence structure
+#' estimated from pseudo‑observations.
+#'
+#' @param lesion_events A data frame with columns \code{time} and
+#'   \code{status}, typically produced by \code{lesion_event()}.
+#' @param tumour_events A data frame with columns \code{time} and
+#'   \code{status}, typically produced by \code{tumour_event()}.
+#' @param n_times Integer. Number of follow‑up time points at which to
+#'   evaluate the PFS curve.
+#' @param copula_family Integer or vector of integers specifying the
+#'   copula family (or families) to be considered by
+#'   \code{VineCopula::BiCopSelect()}.
+#'
+#' @return A numeric vector of length \code{n_times} giving the estimated
+#'   progression‑free survival probability at each time point.
+#'
+#' @details
+#' The method proceeds in three steps:
+#' \enumerate{
+#'   \item Pseudo‑observations are computed from the marginal event times
+#'         using Kaplan–Meier CDFs.
+#'   \item A bivariate copula is fitted to the pseudo‑observations to
+#'         estimate the dependence parameter.
+#'   \item The PFS curve is reconstructed using the survival‑copula
+#'         identity:
+#'         \deqn{
+#'           S_{\mathrm{PFS}}(t)
+#'           = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t), 1 - S_Y(t); \theta),
+#'         }
+#'         where \eqn{S_D} and \eqn{S_Y} are the marginal survival
+#'         functions and \eqn{C} is the fitted copula.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' lesion_events <- lesion_event(matrix(c(0,0,1, 0,0,0), 2, byrow=TRUE))
+#' tumour_events <- tumour_event(matrix(c(1,1.1,1.3, 1,1,1), 2, byrow=TRUE))
+#' copula_pfs(lesion_events, tumour_events, n_times = 3, copula_family = 1)
+#' }
+#'
+#' @export
 copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 
   # compute pseudo-observations ----

@@ -76,7 +76,7 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
 #' Gets "true" survival rates through a Kaplan-Meier estimate on 100,000 patients
 #'
 #' @param n_times Integer. Number of follow‑up time points.
-#' @param n_patients Integer. Number of patients to simulate. (default 100,000)
+#' @param n_true_patients Integer. Number of patients to simulate. (default 100,000)
 #' @param mean Numeric vector. Mean vector for the multivariate normal
 #'   distribution of log tumour‑size ratios.
 #' @param covariance Numeric matrix. Covariance matrix for the

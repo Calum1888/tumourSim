@@ -19,6 +19,8 @@ get_true_rates(
 \arguments{
 \item{n_times}{Integer. Number of follow‑up time points.}
 
+\item{n_true_patients}{Integer. Number of patients to simulate. (default 100,000)}
+
 \item{mean}{Numeric vector. Mean vector for the multivariate normal
 distribution of log tumour‑size ratios.}
 
@@ -38,8 +40,6 @@ logistic new‑lesion model.}
 patients; defaults to 0 (control arm).}
 
 \item{threshold}{Numeric. Threshold multiplier for defining tumour growth progression (default 1.2).}
-
-\item{n_patients}{Integer. Number of patients to simulate. (default 100,000)}
 }
 \description{
 Gets "true" survival rates through a Kaplan-Meier estimate on 100,000 patients

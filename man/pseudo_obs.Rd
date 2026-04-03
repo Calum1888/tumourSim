@@ -8,8 +8,6 @@ pseudo_obs(events)
 }
 \arguments{
 \item{events}{A data frame with columns time and status.}
-
-\item{n_times}{Number of follow-up time points.}
 }
 \value{
 A numeric vector of pseudo-observations in (0,1).
