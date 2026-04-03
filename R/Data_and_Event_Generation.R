@@ -90,7 +90,7 @@ generate_continuous_data <- function(n_times, n_patients, mean, covariance){
     stop("Length of mean vector must equal the number of time points.", call. = FALSE)
   }
 
-  if (!is.matrix(covariance) || length(covariance) != n_times^2){
+  if (!is.matrix(covariance) || nrow(covariance) != n_times || ncol(covariance) != n_times){
     stop("Covariance matrix must be a n_times square matrix", call. = FALSE)
   }
 
