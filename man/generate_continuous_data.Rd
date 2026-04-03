@@ -7,6 +7,8 @@
 generate_continuous_data(n_times, n_patients, mean, covariance)
 }
 \arguments{
+\item{n_times}{Integer. Number of time points}
+
 \item{n_patients}{Integer. Number of patients to simulate.}
 
 \item{mean}{Numeric vector. Mean vector for the multivariate normal
