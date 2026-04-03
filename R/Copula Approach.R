@@ -78,7 +78,7 @@ tumour_event <- function(tumour_size_data, threshold = 1.2) {
 #'
 #' Fits non-parametric Kaplan-Meier survival curves to lesion and tumour
 #' progression event data and evaluates the survival probability at each
-#' follow-up timepoint. The resulting marginal estimates are intended for
+#' follow-up time point. The resulting marginal estimates are intended for
 #' use as inputs to a copula model.
 #'
 #' @param lesion_events A data frame with columns \code{time} and \code{status}
@@ -91,9 +91,9 @@ tumour_event <- function(tumour_size_data, threshold = 1.2) {
 #' @return A data frame with \code{n_times} rows and two columns:
 #'   \describe{
 #'     \item{LESION}{Kaplan-Meier survival probability for lesion progression
-#'       at each timepoint t = 1, ..., T.}
+#'       at each time point t = 1, ..., T.}
 #'     \item{TUMOUR}{Kaplan-Meier survival probability for tumour progression
-#'       at each timepoint t = 1, ..., T.}
+#'       at each time point t = 1, ..., T.}
 #'   }
 copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
   fit_lesion <- survfit(Surv(time, status) ~ 1, data = lesion_events)
@@ -111,7 +111,7 @@ copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
 #'
 #' Fits a bivariate copula to the marginal Kaplan-Meier survival estimates for
 #' lesion and tumour progression events, then evaluates the progression-free
-#' survival function at each follow-up timepoint using the relationship:
+#' survival function at each follow-up time point using the relationship:
 #'
 #'   S_PFS(t) = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t), 1 - S_Y(t); theta)
 #'
@@ -133,26 +133,26 @@ copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
 #'   progression-free survival probability at each time point t = 1, ..., T.
 copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 
-  # Step 1: estimate KM marginal survival at each time point
+  # estimate KM marginal survival at each time point
   margins <- copula_margin_estimation(lesion_events, tumour_events, n_times)
   S_D <- margins$LESION
   S_Y <- margins$TUMOUR
 
-  # Step 2: convert to marginal CDFs (pseudo-observations on [0,1])
+  # convert to marginal CDFs
   U_D <- 1 - S_D
   U_Y <- 1 - S_Y
 
-  # Step 3: fit copula to marginal CDFs to estimate theta
+  # fit copula to marginal CDFs to estimate theta
   copula_fit <- BiCopSelect(U_D, U_Y, familyset = copula_family)
 
-  # Step 4: evaluate the fitted copula C(u, v; theta) at each time point
+  # evaluate the fitted copula C(u, v; theta) at each time point
   C_uv <- BiCopCDF(U_D, U_Y, obj = copula_fit)
 
-  # Step 5: compute PFS via the survival copula identity
+  # compute PFS via the survival copula identity
   # S_PFS(t) = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t), 1 - S_Y(t); theta)
   S_pfs <- S_D + S_Y - 1 + C_uv
 
-  S_pfs
+  return(S_pfs)
 }
 
 
