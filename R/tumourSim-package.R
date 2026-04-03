@@ -4,5 +4,5 @@
 #' @importFrom MASS mvrnorm
 #' @importFrom survival survfit
 #' @importFrom VineCopula BiCopSelect
-#' @importFrom VineCopula Bi CopCDF
+#' @importFrom VineCopula BiCopCDF
 "_PACKAGE"

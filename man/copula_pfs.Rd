@@ -25,7 +25,10 @@ A numeric vector of length \code{n_times} giving the estimated
   progression‑free survival probability at each time point.
 }
 \description{
-Estimate progression‑free survival using a copula model
+Computes a copula‑based estimate of the progression‑free survival (PFS)
+curve by combining marginal Kaplan–Meier survival functions for lesion
+progression and tumour progression with a dependence structure
+estimated from pseudo‑observations.
 }
 \details{
 The method proceeds in three steps:
