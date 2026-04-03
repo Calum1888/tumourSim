@@ -53,5 +53,4 @@ lesion_events <- lesion_event(matrix(c(0,0,1, 0,0,0), 2, byrow=TRUE))
 tumour_events <- tumour_event(matrix(c(1,1.1,1.3, 1,1,1), 2, byrow=TRUE))
 copula_pfs(lesion_events, tumour_events, n_times = 3, copula_family = 1)
 }
-
 }
