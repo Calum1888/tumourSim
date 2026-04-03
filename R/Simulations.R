@@ -55,7 +55,7 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
   # generate coefficients
   coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
   # simulate tumour‑size data
-  cont <- generate_continuous_data(n_patients, mean, covariance)
+  cont <- generate_continuous_data(n_times, n_patients, mean, covariance)
   # recover tumour sizes
   tumour_sizes <- recover_tumour_sizes(cont$baseline_tumour_size,
                                        cont$log_tumour_size_ratio)
