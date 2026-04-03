@@ -138,6 +138,7 @@ pseudo_obs <- function(events) {
 #' copula_margin_estimation(lesion_events, tumour_events, n_times = 3)
 #' }
 #'
+#' @importFrom survival survfit Surv
 #' @export
 copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
 
@@ -195,7 +196,7 @@ copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
 #' tumour_events <- tumour_event(matrix(c(1,1.1,1.3, 1,1,1), 2, byrow=TRUE))
 #' copula_pfs(lesion_events, tumour_events, n_times = 3, copula_family = 1)
 #' }
-#'
+#' @importFrom VineCopula BiCopSelect BiCopCDF
 #' @export
 copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 
@@ -222,4 +223,149 @@ copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
   S_pfs <- S_D + S_Y - 1 + C_uv
 
   return(S_pfs)
+}
+
+#' Bootstrap progression-free survival estimates from a copula model
+#'
+#' Draws \code{B} bootstrap resamples of subjects, re-estimates the copula-based
+#' PFS curve on each resample, and returns pointwise percentile confidence
+#' intervals, coverage against a known true curve, and average CI width.
+#'
+#' @param lesion_data A matrix where each row is a subject and each column a
+#'   follow-up time. Entries are binary (0/1); passed to \code{lesion_event()}.
+#' @param tumour_size_data A matrix where each row is a subject and each column
+#'   a tumour size measurement. The first column is baseline; passed to
+#'   \code{tumour_event()}.
+#' @param n_times Integer. Number of follow-up time points at which to evaluate
+#'   the PFS curve.
+#' @param copula_family Integer or vector of integers specifying the copula
+#'   family (or families) passed to \code{VineCopula::BiCopSelect()}.
+#' @param B Integer. Number of bootstrap resamples. Defaults to 500.
+#' @param alpha Numeric. Significance level for the percentile CI. Defaults to
+#'   0.05, giving a 95\% CI.
+#' @param true_pfs A numeric vector of length \code{n_times} containing the
+#'   known true PFS probabilities at each time point, used to compute pointwise
+#'   coverage.
+#' @param threshold Numeric. Multiplicative threshold for tumour progression,
+#'   passed to \code{tumour_event()}. Defaults to 1.2.
+#' @param seed Integer or \code{NULL}. Random seed for reproducibility. Defaults
+#'   to \code{NULL}.
+#'
+#' @return A list with the following elements:
+#'   \describe{
+#'     \item{boot_curves}{A \code{B x n_times} matrix of bootstrap PFS
+#'       estimates, one row per resample.}
+#'     \item{ci_lower}{Numeric vector of length \code{n_times}. Lower bound of
+#'       the pointwise percentile CI at each time point.}
+#'     \item{ci_upper}{Numeric vector of length \code{n_times}. Upper bound of
+#'       the pointwise percentile CI at each time point.}
+#'     \item{coverage}{Numeric vector of length \code{n_times}. Indicator (0/1)
+#'       of whether the true PFS value at each time point falls within the CI.}
+#'     \item{mean_coverage}{Scalar. Average pointwise coverage across all time
+#'       points.}
+#'     \item{mean_ci_width}{Scalar. Average pointwise CI width across all time
+#'       points.}
+#'   }
+#'
+#' @details
+#' On each bootstrap iteration, \code{n} subjects are sampled with replacement
+#' (where \code{n} is the number of rows in \code{lesion_data}). The resampled
+#' lesion and tumour matrices are passed through \code{lesion_event()},
+#' \code{tumour_event()}, and \code{copula_pfs()} to produce a bootstrap PFS
+#' curve. Any iteration that throws an error (e.g. due to degenerate resamples)
+#' is silently skipped. Coverage is computed pointwise: at each time \code{t},
+#' the indicator is 1 if \code{true_pfs[t]} lies within the percentile interval
+#' [\code{ci_lower[t]}, \code{ci_upper[t]}].
+#'
+#' @examples
+#' \dontrun{
+#' lesion_data      <- matrix(rbinom(100 * 10, 1, 0.2), nrow = 100)
+#' tumour_size_data <- matrix(abs(rnorm(100 * 11, mean = 1)), nrow = 100)
+#' true_pfs         <- exp(-0.1 * 1:10)
+#'
+#' result <- bootstrap_copula_pfs(
+#'   lesion_data      = lesion_data,
+#'   tumour_size_data = tumour_size_data,
+#'   n_times          = 10,
+#'   copula_family    = 1,
+#'   B                = 500,
+#'   true_pfs         = true_pfs,
+#'   seed             = 42
+#' )
+#'
+#' result$mean_coverage
+#' result$mean_ci_width
+#' }
+#'
+#' @export
+bootstrap_copula_pfs <- function(lesion_data,
+                                 tumour_size_data,
+                                 n_times,
+                                 copula_family,
+                                 B         = 500,
+                                 alpha     = 0.05,
+                                 true_pfs,
+                                 threshold = 1.2,
+                                 seed      = NULL) {
+
+  # input checks ----
+  stopifnot(
+    is.matrix(lesion_data) || is.data.frame(lesion_data),
+    is.matrix(tumour_size_data) || is.data.frame(tumour_size_data),
+    nrow(lesion_data) == nrow(tumour_size_data),
+    length(true_pfs) == n_times,
+    B > 0, alpha > 0, alpha < 1
+  )
+
+  if (!is.null(seed)) set.seed(seed)
+
+  n <- nrow(lesion_data)
+
+  # run bootstrap resamples ----
+  boot_curves <- matrix(NA_real_, nrow = B, ncol = n_times)
+
+  for (b in seq_len(B)) {
+    idx <- sample(n, n, replace = TRUE)
+
+    pfs_b <- tryCatch(
+      {
+        lesion_events_b <- lesion_event(lesion_data[idx, , drop = FALSE])
+        tumour_events_b <- tumour_event(
+          tumour_size_data[idx, , drop = FALSE],
+          threshold = threshold
+        )
+        copula_pfs(lesion_events_b, tumour_events_b, n_times, copula_family)
+      },
+      error = function(e) NULL
+    )
+
+    if (!is.null(pfs_b)) boot_curves[b, ] <- pfs_b
+  }
+
+  # drop any failed iterations before summarising ----
+  boot_curves <- boot_curves[complete.cases(boot_curves), , drop = FALSE]
+
+  n_valid <- nrow(boot_curves)
+  if (n_valid == 0) stop("All bootstrap iterations failed. Check your inputs.")
+  if (n_valid < B)  warning(sprintf("%d of %d bootstrap iterations failed and were dropped.", B - n_valid, B))
+
+  # pointwise percentile CIs ----
+  ci_lower <- apply(boot_curves, 2, quantile, probs = alpha / 2)
+  ci_upper <- apply(boot_curves, 2, quantile, probs = 1 - alpha / 2)
+
+  # pointwise coverage against known true curve ----
+  coverage <- as.integer(true_pfs >= ci_lower & true_pfs <= ci_upper)
+
+  # summary scalars ----
+  mean_coverage  <- mean(coverage)
+  mean_ci_width  <- mean(ci_upper - ci_lower)
+
+  list(
+    boot_curves   = boot_curves,
+    ci_lower      = ci_lower,
+    ci_upper      = ci_upper,
+    coverage      = coverage,
+    mean_coverage = mean_coverage,
+    mean_ci_width = mean_ci_width
+  )
 }
