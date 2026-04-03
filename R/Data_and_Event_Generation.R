@@ -63,6 +63,7 @@ generate_coefficients <- function(n_times, n_patients,alpha, beta, gamma, R){
 #' covariance matrix, while baseline tumour sizes are sampled from a
 #' uniform distribution on \eqn{[0, 1]}.
 #'
+#' @param n_times Integer. Number of time points
 #' @param n_patients Integer. Number of patients to simulate.
 #' @param mean Numeric vector. Mean vector for the multivariate normal
 #'   distribution of log tumour size ratios.
