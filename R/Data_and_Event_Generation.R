@@ -98,6 +98,7 @@ generate_continuous_data <- function(n_times, n_patients, mean, covariance){
   }
 
   ltsr <- mvrnorm(n = n_patients, mu = mean, Sigma = covariance)
+  ltsr <- matrix(ltsr, nrow = n_patients, ncol = n_times)
   # min =0, max = 1 remain the same no matter other changes in variables
   bts <- runif(n = n_patients, min = 0, max = 1)
 
