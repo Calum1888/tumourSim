@@ -22,6 +22,7 @@ library(survival)
 #' lesion_data <- matrix(c(0,0,1,
 #'                         0,0,0), nrow = 2, byrow = TRUE)
 #' lesion_event(lesion_data)
+#' @export
 lesion_event <- function(lesion_data) {
   n_times <- ncol(lesion_data)
 

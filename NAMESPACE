@@ -2,8 +2,10 @@
 
 export(copula_margin_estimation)
 export(copula_pfs)
+export(lesion_event)
 export(run_iterations)
 importFrom(MASS,mvrnorm)
+importFrom(VineCopula,BiCopCDF)
 importFrom(VineCopula,BiCopSelect)
 importFrom(stats,rbinom)
 importFrom(stats,runif)
