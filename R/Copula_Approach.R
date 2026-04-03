@@ -1,4 +1,3 @@
-library(copula)
 library(survival)
 
 #' Derive lesion-based event times and status indicators
