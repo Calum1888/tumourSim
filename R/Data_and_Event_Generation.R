@@ -39,8 +39,12 @@ generate_coefficients <- function(n_times, n_patients,alpha, beta, gamma, R){
   if (!is.numeric(gamma))
     stop("`gamma` must be numeric.", call. = FALSE)
 
-  if (!R %in% c(0, 1)) {
-    stop("`R` must be 0 or 1.", call. = FALSE)
+  if (length(R) == 1) {
+    R_vec <- rep(R, n_patients)
+  } else if (length(R) == n_patients) {
+    R_vec <- R
+  } else {
+    stop("`R` must be length 1 or length n_patients.")
   }
 
   alpha_vec <- rep(alpha, n_times)
