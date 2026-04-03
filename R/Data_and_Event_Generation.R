@@ -182,27 +182,31 @@ generate_binary_data <- function(probabilities) {
 #'
 #' @return Data frame with time and status for each patient
 event_definition <- function(lesion_data, tumour_size_data, threshold = 1.2) {
-
   n_patients <- nrow(tumour_size_data)
-  n_times    <- ncol(tumour_size_data) - 1
+  n_times    <- ncol(tumour_size_data) - 1  # number of follow-up times T
 
-  # tumour sizes at times 1..T
-  tumour <- tumour_size_data[, -1, drop = FALSE]
-  rolling_min <- t(apply(tumour_size_data, 1, cummin))[, -ncol(tumour_size_data), drop = FALSE]
-  event_matrix <- (lesion_data == 1) | (tumour > threshold * rolling_min)
+  # z_{i0}, ..., z_{iT}: tumour sizes including baseline
+  # tumour_size_data columns: [baseline, t1, t2, ..., tT]
+  tumour <- tumour_size_data[, -1, drop = FALSE]  # columns t1..tT
 
-  # find first TRUE per row using max.col on reversed matrix
-  # max.col returns index of first max; reversing makes TRUE appear last
-  idx <- max.col(event_matrix, ties.method = "first")
+  # Rolling min of STRICTLY prior timepoints per the paper:
+  # at time t, denominator = min{z_{i0}, ..., z_{i(t-1)}}
+  # cummin over [baseline, t1, ..., t_{T-1}] gives the correct prior-min for each t
+  prior_cols  <- tumour_size_data[, -ncol(tumour_size_data), drop = FALSE]  # drop last col
+  rolling_min <- t(apply(prior_cols, 1, cummin))  # n_patients × T, min up to t-1 for each t
 
-  # if no event, row is all FALSE → max.col returns 1, but event_mat[,1] is FALSE
-  no_event <- rowSums(event_matrix) == 0
+  # Tumour size progression event
+  progression  <- tumour > threshold * rolling_min  # n_patients × T
 
-  time   <- idx
+  # New lesion event (lesion_data must be n_patients × T, covering t1..tT only)
+  event_matrix <- (lesion_data == 1) | progression
+
+  # First event time
+  no_event       <- rowSums(event_matrix) == 0
+  idx            <- max.col(event_matrix, ties.method = "first")
+  time           <- idx
   time[no_event] <- n_times
-
-  status <- as.integer(!no_event)
+  status         <- as.integer(!no_event)
 
   data.frame(time = time, status = status)
 }
-
