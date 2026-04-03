@@ -50,7 +50,6 @@ generate_coefficients <- function(n_times, n_patients,alpha, beta, gamma, R){
   alpha_vec <- rep(alpha, n_times)
   beta_vec <- rep(beta, n_times)
   gamma_vec <- rep(gamma, n_times)
-  R_vec <- rep(R, n_patients)
 
   return(list(alpha_r = alpha_vec,
               beta_r = beta_vec,
