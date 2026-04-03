@@ -106,8 +106,8 @@ pseudo_obs <- function(events) {
 copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 
   # compute pseudo-observations ----
-  U_D <- pseudo_obs(lesion_events, n_times)
-  U_Y <- pseudo_obs(tumour_events, n_times)
+  U_D <- pseudo_obs(lesion_events)
+  U_Y <- pseudo_obs(tumour_events)
 
   # fit copula to subject-level pseudo-observations ----
   copula_fit <- BiCopSelect(U_D, U_Y, familyset = copula_family)
