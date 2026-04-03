@@ -23,6 +23,25 @@ library(MASS)
 #' }
 generate_coefficients <- function(n_times, n_patients,alpha, beta, gamma, R){
 
+  if (!is.numeric(n_times) || n_times %% 1 != 0)
+    stop("`n_times` must be an integer.", call. = FALSE)
+
+  if (!is.numeric(n_patients) || n_patients %% 1 != 0)
+    stop("`n_patients` must be an integer.", call. = FALSE)
+
+  if (!is.numeric(alpha))
+    stop("`alpha` must be numeric.", call. = FALSE)
+
+  if (!is.numeric(beta))
+    stop("`beta` must be numeric.", call. = FALSE)
+
+  if (!is.numeric(gamma))
+    stop("`gamma` must be numeric.", call. = FALSE)
+
+  if (!R %in% c(0, 1)) {
+    stop("`R` must be 0 or 1.", call. = FALSE)
+  }
+
   alpha_vec <- rep(alpha, n_times)
   beta_vec <- rep(beta, n_times)
   gamma_vec <- rep(gamma, n_times)
