@@ -23,6 +23,7 @@ library(MASS)
 #' }
 generate_coefficients <- function(n_times, n_patients,alpha, beta, gamma, R){
 
+  # checks
   if (!is.numeric(n_times) || n_times %% 1 != 0)
     stop("`n_times` must be an integer.", call. = FALSE)
 
@@ -75,7 +76,22 @@ generate_coefficients <- function(n_times, n_patients,alpha, beta, gamma, R){
 #'   \item{baseline_tumour_size}{A numeric vector of length
 #'     \code{n_patients} with values drawn from \eqn{U(0,1)}.}
 #' }
-generate_continuous_data <- function(n_patients, mean, covariance){
+generate_continuous_data <- function(n_times, n_patients, mean, covariance){
+
+  # checks
+  if (!is.numeric(n_times) || n_times %% 1 != 0)
+    stop("`n_times` must be an integer.", call. = FALSE)
+
+  if (!is.numeric(n_patients) || n_patients %% 1 != 0)
+    stop("`n_patients` must be an integer.", call. = FALSE)
+
+  if (!is.vector(mean) || length(mean) != n_times){
+    stop("Length of mean vector must equal the number of time points.", call. = FALSE)
+  }
+
+  if (!is.matrix(covariance) || length(covariance) != n_times^2){
+    stop("Covariance matrix must be a n_times square matrix", call. = FALSE)
+  }
 
   ltsr <- mvrnorm(n = n_patients, mu = mean, Sigma = covariance)
   # min =0, max = 1 remain the same no matter other changes in variables
