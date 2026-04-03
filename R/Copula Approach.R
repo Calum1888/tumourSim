@@ -107,6 +107,54 @@ copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
   )
 }
 
+#' Estimate progression-free survival using a copula model
+#'
+#' Fits a bivariate copula to the marginal Kaplan-Meier survival estimates for
+#' lesion and tumour progression events, then evaluates the progression-free
+#' survival function at each follow-up timepoint using the relationship:
+#'
+#'   S_PFS(t) = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t), 1 - S_Y(t); theta)
+#'
+#' where C is a standard copula with dependence parameter theta estimated from
+#' the data, and S_D, S_Y are the Kaplan-Meier marginal survival functions for
+#' lesion and tumour progression respectively.
+#'
+#' @param lesion_events A data frame with columns \code{time} and \code{status}
+#'   as returned by \code{lesion_event()}.
+#' @param tumour_events A data frame with columns \code{time} and \code{status}
+#'   as returned by \code{tumour_event()}.
+#' @param n_times A positive integer giving the number of follow-up timepoints
+#'   T at which to evaluate the survival function.
+#' @param copula_family A character string specifying the copula family to use,
+#'   passed to \code{BiCopSelect()} or \code{BiCop()}. Defaults to
+#'   \code{"frank"}.
+#'
+#' @return A numeric vector of length \code{n_times} giving the estimated
+#'   progression-free survival probability at each time point t = 1, ..., T.
+copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
+
+  # Step 1: estimate KM marginal survival at each time point
+  margins <- copula_margin_estimation(lesion_events, tumour_events, n_times)
+  S_D <- margins$LESION
+  S_Y <- margins$TUMOUR
+
+  # Step 2: convert to marginal CDFs (pseudo-observations on [0,1])
+  U_D <- 1 - S_D
+  U_Y <- 1 - S_Y
+
+  # Step 3: fit copula to marginal CDFs to estimate theta
+  copula_fit <- BiCopSelect(U_D, U_Y, familyset = copula_family)
+
+  # Step 4: evaluate the fitted copula C(u, v; theta) at each time point
+  C_uv <- BiCopCDF(U_D, U_Y, obj = copula_fit)
+
+  # Step 5: compute PFS via the survival copula identity
+  # S_PFS(t) = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t), 1 - S_Y(t); theta)
+  S_pfs <- S_D + S_Y - 1 + C_uv
+
+  S_pfs
+}
+
 
 
 
