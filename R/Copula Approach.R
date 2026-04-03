@@ -129,8 +129,7 @@ copula_margin_estimation <- function(lesion_events, tumour_events, n_times) {
 #' @param n_times A positive integer giving the number of follow-up timepoints
 #'   T at which to evaluate the survival function.
 #' @param copula_family A character string specifying the copula family to use,
-#'   passed to \code{BiCopSelect()} or \code{BiCop()}. Defaults to
-#'   \code{"frank"}.
+#'   passed to \code{BiCopSelect()} or \code{BiCop()}.
 #'
 #' @return A numeric vector of length \code{n_times} giving the estimated
 #'   progression-free survival probability at each time point t = 1, ..., T.
