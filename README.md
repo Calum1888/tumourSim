@@ -9,5 +9,5 @@ This package has been created as part of my master's project. It investigates th
 ## Installation
 
 ```r
-# install.packages("devtools")
+install.packages("devtools")
 devtools::install_github("Calum1888/tumourSim")
