@@ -4,7 +4,7 @@
 \alias{generate_continuous_data}
 \title{Generate continuous tumour‑size data}
 \usage{
-generate_continuous_data(n_patients, mean, covariance)
+generate_continuous_data(n_times, n_patients, mean, covariance)
 }
 \arguments{
 \item{n_patients}{Integer. Number of patients to simulate.}

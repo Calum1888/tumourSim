@@ -73,12 +73,37 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
   return(summary(fit, times = seq_len(n_times), extend = TRUE))
 }
 
+#' Gets "true" survival rates through a Kaplan-Meier estimate on 100,000 patients
+#'
+#' @param n_times Integer. Number of follow‑up time points.
+#' @param n_patients Integer. Number of patients to simulate.
+#'    (default 100,000)
+#' @param mean Numeric vector. Mean vector for the multivariate normal
+#'   distribution of log tumour‑size ratios.
+#' @param covariance Numeric matrix. Covariance matrix for the
+#'   multivariate normal distribution.
+#' @param alpha Numeric scalar. Baseline intercept parameter for the
+#'   logistic new‑lesion model.
+#' @param beta Numeric scalar. Treatment‑effect parameter for the
+#'   logistic new‑lesion model.
+#' @param gamma Numeric scalar. Effect of previous tumour size in the
+#'   logistic new‑lesion model.
+#' @param R Numeric scalar or vector. Treatment indicator(s) for
+#'   patients; defaults to 0 (control arm).
+#' @param threshold Numeric. Threshold multiplier for defining tumour
+#'   growth progression (default 1.2).
+get_true_rates(n_times, n_true_patients = 100000, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
+
+  true_rates <- run_single_simulation(n_times, n_true_patients, mean, covariance, alpha, beta, gamma, R, threshold = 1.2)
+
+  return(true_rates)
+}
+
 #' Executes \code{n_iterations}s of the single Kaplan-Meier iteration in the function \code{run_single_simulation}.
 #'
 #' @param n_times Integer. Number of follow‑up time points.
 #' @param n_patients Integer. Number of patients to simulate.
 #' @param n_iterations Integer. Number of iterations to run the KM simulations on.
-#' @param true_rate Numeric vector. Vector of the "true" survival rates
 #' @param mean Numeric vector. Mean vector for the multivariate normal
 #'   distribution of log tumour‑size ratios.
 #' @param covariance Numeric matrix. Covariance matrix for the
@@ -95,7 +120,9 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
 #'   growth progression (default 1.2).
 #'
 #' @export
-run_iterations <- function(n_times, n_patients, n_iterations, true_rate, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
+run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
+
+  true_rate <- get_true_rates(n_times, n_true_patients = 100000, mean, covariance, alpha, beta, gamma, R, threshold = 1.2)
 
   surv_prob_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
   conf_low_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_times)
@@ -118,11 +145,12 @@ run_iterations <- function(n_times, n_patients, n_iterations, true_rate, mean, c
     conf_high_matrix[i, ] <- fit_summary$upper
   }
 
-  #covered <- (sweep(conf_low_matrix, 2, true_rate, "<=") & sweep(conf_high_matrix, 2, true_rate, ">="))
-  #coverage <- colMeans(covered, na.rm = TRUE)
+  covered <- (sweep(conf_low_matrix, 2, true_rate, "<=") & sweep(conf_high_matrix, 2, true_rate, ">="))
+  coverage <- colMeans(covered, na.rm = TRUE)
   ci_width <- colMeans(conf_high_matrix - conf_low_matrix)
   mean_surv <- colMeans(surv_prob_matrix)
   return(data.frame(Rate = round(mean_surv, 3),
-                    CI_Width = round(ci_width, 3)
+                    CI_Width = round(ci_width, 3),
+                    Coverage = round(coverage, 3)
                     ))
 }
