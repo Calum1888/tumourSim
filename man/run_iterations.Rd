@@ -8,7 +8,6 @@ run_iterations(
   n_times,
   n_patients,
   n_iterations,
-  true_rate,
   mean,
   covariance,
   alpha,
@@ -24,8 +23,6 @@ run_iterations(
 \item{n_patients}{Integer. Number of patients to simulate.}
 
 \item{n_iterations}{Integer. Number of iterations to run the KM simulations on.}
-
-\item{true_rate}{Numeric vector. Vector of the "true" survival rates}
 
 \item{mean}{Numeric vector. Mean vector for the multivariate normal
 distribution of log tumour‑size ratios.}
