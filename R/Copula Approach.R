@@ -1,3 +1,6 @@
+library(copula)
+library(survival)
+
 #' Derive lesion-based event times and status indicators
 #'
 #' Computes the first time at which a binary lesion indicator equals 1 for each
