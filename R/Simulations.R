@@ -120,7 +120,7 @@ get_true_rates <- function(n_times, n_true_patients = 100000, mean, covariance, 
 #' @export
 run_iterations <- function(n_times, n_patients, n_iterations, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
 
-  true_rate <- get_true_rates(n_times, n_true_patients = 100000, mean, covariance, alpha, beta, gamma, R, threshold = 1.2)
+  true_rate <- get_true_rates(n_times, n_true_patients = 100000, mean, covariance, alpha, beta, gamma, R, threshold = 1.2)$surv
 
   surv_prob_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
   conf_low_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_times)
