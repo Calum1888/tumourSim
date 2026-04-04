@@ -432,7 +432,7 @@ run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covar
         n_times          = n_times,
         copula_family    = copula_family,
         B                = B,
-        alpha            = 0.05,
+        alpha_level      = 0.05,
         true_pfs         = true_rate,
         threshold        = threshold,
         seed             = NULL
