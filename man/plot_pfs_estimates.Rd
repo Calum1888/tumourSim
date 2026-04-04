@@ -23,14 +23,14 @@ as a dashed reference line.}
 A \code{ggplot} object (patchwork-combined two-panel figure).
 }
 \description{
-Produces two ggplot2 panels — one for the Kaplan–Meier estimate and one for
-the copula-based estimate — each showing the mean survival curve and its
+Produces two ggplot2 panels -- one for the Kaplan-Meier estimate and one for
+the copula-based estimate -- each showing the mean survival curve and its
 pointwise confidence interval across simulation iterations.
 }
 \details{
 Both \code{km_results} and \code{copula_results} must have the same number
 of rows (one per time point). The CI bands are reconstructed as
-\code{Rate ± CI_Width / 2}.
+\code{Rate +/- CI_Width / 2}.
 }
 \examples{
 \dontrun{
