@@ -240,10 +240,10 @@ copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 #'   the PFS curve.
 #' @param copula_family Integer or vector of integers specifying the copula
 #'   family (or families) passed to \code{VineCopula::BiCopSelect()}.
-#'   1 = Gaussian
-#'   2 = t-Student
-#'   3 = Clayton
-#'   4 = Gumbel
+#'   1 = Gaussian,
+#'   2 = t-Student,
+#'   3 = Clayton,
+#'   4 = Gumbel,
 #'   5 = Frank
 #' @param B Integer. Number of bootstrap resamples. Defaults to 500.
 #' @param alpha_level Numeric. Significance level for the percentile CI. Defaults to
