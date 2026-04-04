@@ -10,7 +10,7 @@ bootstrap_copula_pfs(
   n_times,
   copula_family,
   B = 500,
-  alpha = 0.05,
+  alpha_level = 0.05,
   true_pfs,
   threshold = 1.2,
   seed = NULL
@@ -28,11 +28,16 @@ a tumour size measurement. The first column is baseline; passed to
 the PFS curve.}
 
 \item{copula_family}{Integer or vector of integers specifying the copula
-family (or families) passed to \code{VineCopula::BiCopSelect()}.}
+family (or families) passed to \code{VineCopula::BiCopSelect()}.
+1 = Gaussian
+2 = t-Student
+3 = Clayton
+4 = Gumbel
+5 = Frank}
 
 \item{B}{Integer. Number of bootstrap resamples. Defaults to 500.}
 
-\item{alpha}{Numeric. Significance level for the percentile CI. Defaults to
+\item{alpha_level}{Numeric. Significance level for the percentile CI. Defaults to
 0.05, giving a 95\% CI.}
 
 \item{true_pfs}{A numeric vector of length \code{n_times} containing the
