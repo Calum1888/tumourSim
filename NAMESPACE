@@ -3,6 +3,7 @@
 export(bootstrap_copula_pfs)
 export(copula_margin_estimation)
 export(copula_pfs)
+export(get_true_rates)
 export(lesion_event)
 export(plot_pfs_estimates)
 export(run_iterations)
