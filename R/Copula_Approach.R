@@ -403,6 +403,8 @@ bootstrap_copula_pfs <- function(lesion_data,
 #'     \item{CI_Width}{Mean bootstrap CI width at each time point.}
 #'     \item{Coverage}{Proportion of CIs containing the true rate at each time point.}
 #'   }
+#'
+#' @export
 run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covariance,
                                   alpha, beta, gamma, R, copula_family,
                                   B = 500, threshold = 1.2) {
