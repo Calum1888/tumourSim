@@ -29,10 +29,10 @@ the PFS curve.}
 
 \item{copula_family}{Integer or vector of integers specifying the copula
 family (or families) passed to \code{VineCopula::BiCopSelect()}.
-1 = Gaussian
-2 = t-Student
-3 = Clayton
-4 = Gumbel
+1 = Gaussian,
+2 = t-Student,
+3 = Clayton,
+4 = Gumbel,
 5 = Frank}
 
 \item{B}{Integer. Number of bootstrap resamples. Defaults to 500.}
