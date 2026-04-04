@@ -35,6 +35,7 @@
 #'   margin
 #' @importFrom patchwork plot_annotation wrap_plots
 #' @importFrom scales percent_format
+#' @importFrom rlang .data
 #' @export
 plot_pfs_estimates <- function(km_results,
                                copula_results,
