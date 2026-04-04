@@ -20,6 +20,10 @@
 #' of rows (one per time point). The CI bands are reconstructed as
 #' \code{Rate +/- CI_Width / 2}.
 #'
+#' Survival curves are drawn as step functions to match the standard
+#' Kaplan-Meier presentation. The CI ribbon is manually expanded into
+#' staircase coordinates so it aligns correctly with \code{geom_step()}.
+#'
 #' @examples
 #' \dontrun{
 #' km_res     <- run_iterations(...)
@@ -29,7 +33,7 @@
 #' plot_pfs_estimates(km_res, copula_res, true_pfs = true_pfs)
 #' }
 #'
-#' @importFrom ggplot2 ggplot aes geom_ribbon geom_line geom_point
+#' @importFrom ggplot2 ggplot aes geom_ribbon geom_step
 #'   scale_y_continuous scale_x_continuous scale_colour_manual
 #'   labs theme_minimal theme element_text element_line element_blank
 #'   margin
@@ -42,6 +46,7 @@ plot_pfs_estimates <- function(km_results,
                                true_pfs = NULL,
                                title    = NULL) {
 
+  # ---- input checks ----------------------------------------------------------
   required_cols <- c("Rate", "CI_Width", "Coverage")
 
   if (!all(required_cols %in% names(km_results)))
@@ -58,6 +63,7 @@ plot_pfs_estimates <- function(km_results,
   if (!is.null(true_pfs) && length(true_pfs) != n_times)
     stop("true_pfs must have length equal to the number of time points.")
 
+  # ---- build tidy data frames ------------------------------------------------
   df_km <- data.frame(
     time     = seq_len(n_times),
     surv     = km_results$Rate,
@@ -72,6 +78,19 @@ plot_pfs_estimates <- function(km_results,
     ci_upper = pmin(copula_results$Rate + copula_results$CI_Width / 2, 1)
   )
 
+  # ---- convert a data frame to step-ribbon coordinates ----------------------
+  # geom_ribbon has no step stat, so each row is duplicated and the second
+  # copy's x is advanced by 1, producing a staircase-shaped ribbon that aligns
+  # with geom_step().
+  to_step_ribbon <- function(df) {
+    n   <- nrow(df)
+    idx <- rep(seq_len(n), each = 2)
+    out <- df[idx, ]
+    out$time[seq(2, nrow(out), by = 2)] <- out$time[seq(2, nrow(out), by = 2)] + 1
+    out
+  }
+
+  # ---- shared theme ----------------------------------------------------------
   pfs_theme <- ggplot2::theme_minimal(base_size = 13) +
     ggplot2::theme(
       plot.title       = ggplot2::element_text(face = "bold", size = 14,
@@ -86,28 +105,29 @@ plot_pfs_estimates <- function(km_results,
       legend.title     = ggplot2::element_blank()
     )
 
+  # ---- helper to build one panel ---------------------------------------------
   make_panel <- function(df, panel_title, colour_line, colour_ribbon) {
+
+    step_df <- to_step_ribbon(df)
 
     p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$time)) +
       ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = .data$ci_lower, ymax = .data$ci_upper),
-        fill  = colour_ribbon,
-        alpha = 0.25
+        data        = step_df,
+        ggplot2::aes(x = .data$time, ymin = .data$ci_lower, ymax = .data$ci_upper),
+        fill        = colour_ribbon,
+        alpha       = 0.25,
+        inherit.aes = FALSE
       ) +
-      ggplot2::geom_line(
+      ggplot2::geom_step(
         ggplot2::aes(y = .data$surv, colour = "Estimated PFS"),
         linewidth = 0.9
-      ) +
-      ggplot2::geom_point(
-        ggplot2::aes(y = .data$surv, colour = "Estimated PFS"),
-        size = 2
       )
 
     # overlay true PFS if provided
     if (!is.null(true_pfs)) {
       true_df <- data.frame(time = seq_len(n_times), surv = true_pfs)
       p <- p +
-        ggplot2::geom_line(
+        ggplot2::geom_step(
           data      = true_df,
           ggplot2::aes(x = .data$time, y = .data$surv, colour = "True PFS"),
           linetype  = "dashed",
@@ -139,10 +159,11 @@ plot_pfs_estimates <- function(km_results,
       pfs_theme
   }
 
+  # ---- build each panel ------------------------------------------------------
   p_km     <- make_panel(df_km,     "Kaplan-Meier Estimate", "#2166AC", "#2166AC")
   p_copula <- make_panel(df_copula, "Copula-Based Estimate", "#D6604D", "#D6604D")
 
-
+  # ---- combine with patchwork ------------------------------------------------
   combined <- patchwork::wrap_plots(p_km, p_copula, ncol = 2)
 
   if (!is.null(title)) {
