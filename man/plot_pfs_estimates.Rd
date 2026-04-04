@@ -31,6 +31,10 @@ pointwise confidence interval across simulation iterations.
 Both \code{km_results} and \code{copula_results} must have the same number
 of rows (one per time point). The CI bands are reconstructed as
 \code{Rate +/- CI_Width / 2}.
+
+Survival curves are drawn as step functions to match the standard
+Kaplan-Meier presentation. The CI ribbon is manually expanded into
+staircase coordinates so it aligns correctly with \code{geom_step()}.
 }
 \examples{
 \dontrun{
