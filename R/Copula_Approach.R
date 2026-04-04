@@ -246,7 +246,7 @@ copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 #'   4 = Gumbel
 #'   5 = Frank
 #' @param B Integer. Number of bootstrap resamples. Defaults to 500.
-#' @param alpha Numeric. Significance level for the percentile CI. Defaults to
+#' @param alpha_level Numeric. Significance level for the percentile CI. Defaults to
 #'   0.05, giving a 95\% CI.
 #' @param true_pfs A numeric vector of length \code{n_times} containing the
 #'   known true PFS probabilities at each time point, used to compute pointwise
@@ -308,7 +308,7 @@ bootstrap_copula_pfs <- function(lesion_data,
                                  n_times,
                                  copula_family,
                                  B         = 500,
-                                 alpha     = 0.05,
+                                 alpha_level     = 0.05,
                                  true_pfs,
                                  threshold = 1.2,
                                  seed      = NULL) {
@@ -319,7 +319,7 @@ bootstrap_copula_pfs <- function(lesion_data,
     is.matrix(tumour_size_data) || is.data.frame(tumour_size_data),
     nrow(lesion_data) == nrow(tumour_size_data),
     length(true_pfs) == n_times,
-    B > 0, alpha > 0, alpha < 1
+    B > 0, alpha_level > 0, alpha_level < 1
   )
 
   if (!is.null(seed)) set.seed(seed)
@@ -355,8 +355,8 @@ bootstrap_copula_pfs <- function(lesion_data,
   if (n_valid < B)  warning(sprintf("%d of %d bootstrap iterations failed and were dropped.", B - n_valid, B))
 
   # pointwise percentile CIs ----
-  ci_lower <- apply(boot_curves, 2, quantile, probs = alpha / 2)
-  ci_upper <- apply(boot_curves, 2, quantile, probs = 1 - alpha / 2)
+  ci_lower <- apply(boot_curves, 2, quantile, probs = alpha_level / 2)
+  ci_upper <- apply(boot_curves, 2, quantile, probs = 1 - alpha_level / 2)
 
   # pointwise coverage against known true curve ----
   coverage <- as.integer(true_pfs >= ci_lower & true_pfs <= ci_upper)
