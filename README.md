@@ -28,7 +28,7 @@ where $C$ is a bivariate copula fitted to pseudo-observations derived from the m
 install.packages(c("survival", "VineCopula", "MASS"))
 
 # Install from source
-devtools::install_github("your-username/your-repo")
+devtools::install_github("Calum1888/tumourSim")
 ```
 
 ---
