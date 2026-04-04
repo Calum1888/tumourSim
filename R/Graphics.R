@@ -139,7 +139,7 @@ plot_pfs_estimates <- function(km_results,
       ggplot2::scale_y_continuous(
         limits = c(0, 1),
         breaks = seq(0, 1, by = 0.2),
-        labels = scales::percent_format(accuracy = 1)
+        labels = scales::number_format(accuracy = 0.001)
       ) +
       ggplot2::scale_x_continuous(
         breaks = seq_len(n_times)
@@ -152,7 +152,6 @@ plot_pfs_estimates <- function(km_results,
       ) +
       ggplot2::labs(
         title    = panel_title,
-        subtitle = "Mean +/- 95% CI across simulation iterations",
         x        = "Time",
         y        = "Survival Probability"
       ) +
