@@ -90,6 +90,8 @@ run_single_simulation <- function(n_times, n_patients, mean, covariance, alpha, 
 #' @param R Numeric scalar or vector. Treatment indicator(s) for
 #'   patients; defaults to 0 (control arm).
 #' @param threshold Numeric. Threshold multiplier for defining tumour growth progression (default 1.2).
+#'
+#' @export
 get_true_rates <- function(n_times, n_true_patients = 100000, mean, covariance, alpha, beta, gamma, R, threshold = 1.2){
 
   true_rates <- run_single_simulation(n_times, n_true_patients, mean, covariance, alpha, beta, gamma, R, threshold = 1.2)
