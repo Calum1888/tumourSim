@@ -2,7 +2,7 @@
 % Please edit documentation in R/Comparative_Trials.R
 \name{frank_copula_power}
 \alias{frank_copula_power}
-\title{Power of the Frank copula method for detecting survival differences}
+\title{Power of the Frank copula method using a paired Wilcoxon test}
 \usage{
 frank_copula_power(
   n_times,
@@ -16,52 +16,20 @@ frank_copula_power(
   beta_trt,
   gamma,
   copula_family = 5,
-  n_perm = 500,
   alpha_level = 0.05,
   threshold = 1.2,
   seed = NULL
 )
 }
 \arguments{
-\item{n_times}{Integer. Number of follow-up time points.}
-
-\item{n_patients}{Integer. Number of patients per arm.}
-
-\item{n_iterations}{Integer. Number of Monte Carlo iterations.}
-
-\item{mean_ctrl}{Numeric vector (length n_times). MVN mean for control arm.}
-
-\item{mean_trt}{Numeric vector (length n_times). MVN mean for treatment arm.}
-
-\item{covariance}{Numeric matrix (n_times x n_times). Shared covariance.}
-
-\item{alpha_coef}{Numeric. Logistic model intercept (shared).}
-
-\item{beta_ctrl}{Numeric. Beta for control arm (typically 0).}
-
-\item{beta_trt}{Numeric. Beta for treatment arm.}
-
-\item{gamma}{Numeric. Tumour-size effect in logistic model.}
-
-\item{copula_family}{Integer. Frank copula = 5 in VineCopula.}
-
-\item{n_perm}{Integer. Number of permutations for the permutation test.}
-
-\item{alpha_level}{Numeric. Significance level. Default 0.05.}
-
-\item{threshold}{Numeric. Tumour growth threshold. Default 1.2.}
-
-\item{seed}{Integer or NULL.}
+\item{n_times, n_patients, n_iterations, mean_ctrl, mean_trt, covariance, }{alpha_coef,beta_ctrl,beta_trt,gamma,alpha_level,threshold,seed
+same as before}
 }
 \value{
-A list with:
-  \item{power}{Scalar. Proportion of iterations rejecting H0.}
-  \item{mean_auc_diff}{Mean AUC difference (trt - ctrl) across iterations.}
-  \item{p_values}{Numeric vector of per-iteration p-values.}
+list: power, mean_auc_diff, p_values
 }
 \description{
-Simulates control and treatment arms using the existing data-generation
-framework, estimates PFS via the Frank copula for each arm, and
-computes power as the proportion of iterations where the permutation
-p-value (based on AUC difference) is below alpha.
+Replaces the permutation test with a paired Wilcoxon signed-rank test on
+the pointwise PFS differences across time points. Much faster than
+permutation — no inner loop required.
 }
