@@ -123,6 +123,14 @@ generate_continuous_data <- function(n_times, n_patients, mean, covariance){
 #'   baseline and all subsequent time points.
 recover_tumour_sizes <- function(baseline, ratios){
 
+  if (!is.vector(baseline)){
+    stop("baseline tumour sizes must be a vector", call. = FALSE)
+  }
+
+  if (!is.matrix(ratios)){
+    stop("ratios must be a matrix of log tumour size ratios")
+  }
+
   n <- length(baseline)
   T <- ncol(ratios)
   # creating n x (T+1) matrix includes baseline size in Z
