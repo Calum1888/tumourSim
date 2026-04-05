@@ -159,3 +159,52 @@ frank_copula_power <- function(n_times,
     p_values      = p_values
   )
 }
+
+#' Power of log-rank test using the same data-generation framework
+#'
+#' @param n_times,n_patients,n_iterations,mean_ctrl,mean_trt,covariance,
+#'   alpha_coef,beta_ctrl,beta_trt,gamma,threshold,seed  same as frank_copula_power
+#' @return list: power, p_values
+#'
+#' @export
+logrank_power <- function(n_times,
+                          n_patients,
+                          n_iterations,
+                          mean_ctrl,
+                          mean_trt,
+                          covariance,
+                          alpha_coef,
+                          beta_ctrl  = 0,
+                          beta_trt,
+                          gamma,
+                          alpha_level = 0.05,
+                          threshold   = 1.2,
+                          seed        = NULL) {
+
+  if (!is.null(seed)) set.seed(seed)
+
+  p_values <- numeric(n_iterations)
+
+  for (i in seq_len(n_iterations)) {
+
+    ctrl <- simulate_arm(n_times, n_patients, mean_ctrl, covariance,
+                         alpha_coef, beta_ctrl, gamma, R = 0, threshold)
+    trt  <- simulate_arm(n_times, n_patients, mean_trt,  covariance,
+                         alpha_coef, beta_trt,  gamma, R = 1, threshold)
+
+    # combined PFS event (lesion OR tumour progression)
+    events_ctrl <- event_definition(ctrl$L, ctrl$Z, threshold)
+    events_trt  <- event_definition(trt$L,  trt$Z,  threshold)
+
+    p_values[i] <- tryCatch(
+      km_log_rank_test(events_ctrl, events_trt),
+      error = function(e) NA_real_
+    )
+  }
+
+  valid <- !is.na(p_values)
+  list(
+    power    = mean(p_values[valid] < alpha_level),
+    p_values = p_values
+  )
+}
