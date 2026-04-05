@@ -6,6 +6,7 @@
 #' @return p-value for the log rank test
 #'
 #' @importFrom survival survdiff Surv
+#' @importFrom stats pchisq
 #' @export
 km_log_rank_test <- function(control_data, treatment_data){
 
