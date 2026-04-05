@@ -77,7 +77,6 @@ frank_copula_power <- function(n_times,
                                       threshold     = 1.2,
                                       seed          = NULL) {
 
-  if (!is.null(seed)) set.seed(seed)
 
   p_values  <- rep(NA_real_, n_iterations)
   auc_diffs <- rep(NA_real_, n_iterations)
@@ -143,7 +142,6 @@ logrank_power <- function(n_times,
                           threshold   = 1.2,
                           seed        = NULL) {
 
-  if (!is.null(seed)) set.seed(seed)
 
   p_values <- numeric(n_iterations)
 
