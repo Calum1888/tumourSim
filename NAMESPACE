@@ -3,6 +3,7 @@
 export(bootstrap_copula_pfs)
 export(copula_margin_estimation)
 export(copula_pfs)
+export(frank_copula_power)
 export(get_true_rates)
 export(km_log_rank_test)
 export(lesion_event)
