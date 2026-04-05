@@ -4,9 +4,10 @@
 #' @param treatment_data time and event data for the treatment arm in the form for KM estimate
 #'
 #' @return p-value for the log rank test
+#'
 #' @importFrom survival survdiff Surv
 #' @export
-km_log_rank_test(control_data, treatment_data){
+km_log_rank_test <- function(control_data, treatment_data){
 
   test_data <- data.frame(
     time      = c(control_data$time,
