@@ -20,7 +20,7 @@ km_log_rank_test <- function(control_data, treatment_data){
 
   log_rank_test <- survdiff(Surv(time, status)~treatment,data = test_data)
 
-  p_val <- 1 - pchisq(log_rank_test, df =1)
+  p_val <- 1 - pchisq(log_rank_test$chisq, df =1)
 
   return(p_val)
 
