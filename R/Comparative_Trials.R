@@ -30,6 +30,8 @@ km_log_rank_test <- function(control_data, treatment_data){
 #'
 #' @inheritParams run_single_simulation
 #' @return list with lesion matrix L and tumour size matrix Z
+#'
+#' @export
 simulate_arm <- function(n_times, n_patients, mean, covariance,
                          alpha, beta, gamma, R, threshold = 1.2) {
   coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
