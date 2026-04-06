@@ -118,7 +118,7 @@ frank_copula_power <- function(n_times,
     # Patient-level permutation: reshuffle who is in each arm,
     # recompute copula PFS curves from scratch for each split
     perm_diffs <- replicate(n_perm, {
-      idx  <- sample.int(n_total, n_patients, replace = FALSE)
+      idx  <- sample.int(n_total, n_patients, replace = TRUE)
       perm_a <- list(L = L_pool[ idx, , drop = FALSE],
                      Z = Z_pool[ idx, , drop = FALSE])
       perm_b <- list(L = L_pool[-idx, , drop = FALSE],
