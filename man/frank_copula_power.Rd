@@ -15,26 +15,70 @@ frank_copula_power(
   beta_ctrl = 0,
   beta_trt,
   gamma,
+  times = seq_len(n_times),
   copula_family = 5,
   alpha_level = 0.05,
   threshold = 1.2,
-  n_perm = 500,
+  n_perm = 1000,
   seed = NULL
 )
 }
 \arguments{
-\item{n_times, n_patients, n_iterations, mean_ctrl, mean_trt, covariance, }{alpha_coef,beta_ctrl,beta_trt,gamma,alpha_level,threshold,seed
-same as logrank_power}
+\item{n_times}{number of assessment time points}
 
-\item{n_perm}{number of permutations per iteration (default 500)}
+\item{n_patients}{patients per arm}
+
+\item{n_iterations}{number of simulated trials}
+
+\item{mean_ctrl}{mean tumour trajectory for control arm (length n_times)}
+
+\item{mean_trt}{mean tumour trajectory for treatment arm (length n_times)}
+
+\item{covariance}{covariance matrix for tumour trajectories (n_times x n_times)}
+
+\item{alpha_coef}{baseline hazard intercept}
+
+\item{beta_ctrl}{log-hazard coefficient for control arm (default 0)}
+
+\item{beta_trt}{log-hazard coefficient for treatment arm}
+
+\item{gamma}{tumour burden effect on hazard}
+
+\item{times}{numeric vector of assessment times used for trapezoidal
+AUC (default \code{seq_len(n_times)})}
+
+\item{copula_family}{integer copula family passed to \code{arm_copula_pfs}
+(5 = Frank)}
+
+\item{alpha_level}{significance threshold (default 0.05)}
+
+\item{threshold}{tumour progression threshold (default 1.2)}
+
+\item{n_perm}{permutations per iteration (default 1000)}
+
+\item{seed}{integer base seed; iteration i uses \code{seed + i} for
+independent reproducibility. NULL disables seeding.}
 }
 \value{
 list: power, mean_auc_diff, p_values
 }
 \description{
 For each iteration, simulates control and treatment arms, computes the
-observed AUC difference between copula PFS curves, then builds a null
-distribution by randomly reassigning patients to arms and recomputing the
-copula PFS curves from scratch each time. This gives the permutation test
-sufficient resolution to detect real differences.
+observed trapezoidal AUC difference between copula PFS curves, then builds
+a null distribution by randomly reassigning patients to arms and recomputing
+the copula PFS curves from scratch each time.
+}
+\details{
+Changes vs previous version:
+\itemize{
+  \item AUC computed via trapezoidal rule (weighted by time spacing) rather
+        than a simple unweighted mean across time points.
+  \item One-sided permutation p-value (treatment better than control) rather
+        than two-sided, increasing power when direction of effect is known.
+  \item Per-iteration seeding (\code{seed + i}) so each iteration is
+        independently reproducible and both methods see the same data when
+        called with the same seed.
+  \item Default \code{n_perm} raised to 1000 for stable p-value resolution
+        at \code{alpha_level = 0.05}.
+}
 }

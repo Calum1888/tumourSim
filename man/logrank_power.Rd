@@ -21,11 +21,18 @@ logrank_power(
 )
 }
 \arguments{
-\item{n_times, n_patients, n_iterations, mean_ctrl, mean_trt, covariance, }{alpha_coef,beta_ctrl,beta_trt,gamma,threshold,seed  same as frank_copula_power}
+\item{n_times, n_patients, n_iterations, mean_ctrl, mean_trt, covariance, }{alpha_coef,beta_ctrl,beta_trt,gamma,threshold  same as frank_copula_power}
+
+\item{alpha_level}{significance threshold (default 0.05)}
+
+\item{seed}{integer base seed; iteration i uses \code{seed + i}.
+NULL disables seeding.}
 }
 \value{
 list: power, p_values
 }
 \description{
-Power of log-rank test using the same data-generation framework
+Updated to use per-iteration seeding (\code{seed + i}) to match
+\code{frank_copula_power}, ensuring both methods simulate from the same
+datasets when called with the same seed.
 }
