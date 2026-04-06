@@ -52,11 +52,13 @@ arm_copula_pfs <- function(arm, n_times, copula_family, threshold = 1.2) {
   copula_pfs(le, te, n_times, copula_family)
 }
 
-#' Power of the Frank copula method using a permutation test on the AUC difference
+#' Power of the Frank copula method using a patient-level permutation test
 #'
-#' For each iteration, simulates control and treatment arms, computes copula-based
-#' PFS curves, and uses a permutation test on the observed AUC difference to obtain
-#' a p-value. The permutation test is valid regardless of the number of time points.
+#' For each iteration, simulates control and treatment arms, computes the
+#' observed AUC difference between copula PFS curves, then builds a null
+#' distribution by randomly reassigning patients to arms and recomputing the
+#' copula PFS curves from scratch each time. This gives the permutation test
+#' sufficient resolution to detect real differences.
 #'
 #' @param n_times,n_patients,n_iterations,mean_ctrl,mean_trt,covariance,
 #'   alpha_coef,beta_ctrl,beta_trt,gamma,alpha_level,threshold,seed
@@ -108,15 +110,35 @@ frank_copula_power <- function(n_times,
     obs_diff <- mean(pfs_trt - pfs_ctrl)
     auc_diffs[i] <- obs_diff
 
-    # Permutation test: pool the two PFS curves and repeatedly reshuffle
-    pooled <- c(pfs_ctrl, pfs_trt)
-    n_pool <- length(pooled)
-    half   <- n_pool / 2
+    # Pool patient-level data from both arms
+    L_pool <- rbind(ctrl$L, trt$L)   # (2*n_patients) x n_times
+    Z_pool <- rbind(ctrl$Z, trt$Z)   # (2*n_patients) x (n_times+1)
+    n_total <- nrow(L_pool)
 
+    # Patient-level permutation: reshuffle who is in each arm,
+    # recompute copula PFS curves from scratch for each split
     perm_diffs <- replicate(n_perm, {
-      idx <- sample.int(n_pool, half, replace = FALSE)
-      mean(pooled[idx]) - mean(pooled[-idx])
+      idx  <- sample.int(n_total, n_patients, replace = FALSE)
+      perm_a <- list(L = L_pool[ idx, , drop = FALSE],
+                     Z = Z_pool[ idx, , drop = FALSE])
+      perm_b <- list(L = L_pool[-idx, , drop = FALSE],
+                     Z = Z_pool[-idx, , drop = FALSE])
+
+      pfs_a <- tryCatch(
+        arm_copula_pfs(perm_a, n_times, copula_family, threshold),
+        error = function(e) NULL
+      )
+      pfs_b <- tryCatch(
+        arm_copula_pfs(perm_b, n_times, copula_family, threshold),
+        error = function(e) NULL
+      )
+
+      if (is.null(pfs_a) || is.null(pfs_b)) return(NA_real_)
+      mean(pfs_a - pfs_b)
     })
+
+    perm_diffs <- perm_diffs[!is.na(perm_diffs)]
+    if (length(perm_diffs) == 0) next
 
     # Two-sided p-value
     p_values[i] <- mean(abs(perm_diffs) >= abs(obs_diff))

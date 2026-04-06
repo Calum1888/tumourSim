@@ -2,7 +2,7 @@
 % Please edit documentation in R/Comparative_Trials.R
 \name{frank_copula_power}
 \alias{frank_copula_power}
-\title{Power of the Frank copula method using a permutation test on the AUC difference}
+\title{Power of the Frank copula method using a patient-level permutation test}
 \usage{
 frank_copula_power(
   n_times,
@@ -32,7 +32,9 @@ same as logrank_power}
 list: power, mean_auc_diff, p_values
 }
 \description{
-For each iteration, simulates control and treatment arms, computes copula-based
-PFS curves, and uses a permutation test on the observed AUC difference to obtain
-a p-value. The permutation test is valid regardless of the number of time points.
+For each iteration, simulates control and treatment arms, computes the
+observed AUC difference between copula PFS curves, then builds a null
+distribution by randomly reassigning patients to arms and recomputing the
+copula PFS curves from scratch each time. This gives the permutation test
+sufficient resolution to detect real differences.
 }
