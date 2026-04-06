@@ -44,6 +44,8 @@ simulate_arm <- function(n_times, n_patients, mean, covariance,
 }
 
 #' Compute copula PFS curve for one arm
+#'
+#' @export
 arm_copula_pfs <- function(arm, n_times, copula_family, threshold = 1.2) {
   le <- lesion_event(arm$L)
   te <- tumour_event(arm$Z, threshold = threshold)
