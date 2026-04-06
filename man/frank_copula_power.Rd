@@ -2,7 +2,7 @@
 % Please edit documentation in R/Comparative_Trials.R
 \name{frank_copula_power}
 \alias{frank_copula_power}
-\title{Power of the Frank copula method using a paired Wilcoxon test}
+\title{Power of the Frank copula method using a permutation test on the AUC difference}
 \usage{
 frank_copula_power(
   n_times,
@@ -18,18 +18,21 @@ frank_copula_power(
   copula_family = 5,
   alpha_level = 0.05,
   threshold = 1.2,
+  n_perm = 500,
   seed = NULL
 )
 }
 \arguments{
 \item{n_times, n_patients, n_iterations, mean_ctrl, mean_trt, covariance, }{alpha_coef,beta_ctrl,beta_trt,gamma,alpha_level,threshold,seed
-same as before}
+same as logrank_power}
+
+\item{n_perm}{number of permutations per iteration (default 500)}
 }
 \value{
 list: power, mean_auc_diff, p_values
 }
 \description{
-Replaces the permutation test with a paired Wilcoxon signed-rank test on
-the pointwise PFS differences across time points. Much faster than
-permutation — no inner loop required.
+For each iteration, simulates control and treatment arms, computes copula-based
+PFS curves, and uses a permutation test on the observed AUC difference to obtain
+a p-value. The permutation test is valid regardless of the number of time points.
 }

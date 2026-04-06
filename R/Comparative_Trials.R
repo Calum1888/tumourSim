@@ -48,35 +48,37 @@ arm_copula_pfs <- function(arm, n_times, copula_family, threshold = 1.2) {
   copula_pfs(le, te, n_times, copula_family)
 }
 
-#' Power of the Frank copula method using a paired Wilcoxon test
+#' Power of the Frank copula method using a permutation test on the AUC difference
 #'
-#' Replaces the permutation test with a paired Wilcoxon signed-rank test on
-#' the pointwise PFS differences across time points. Much faster than
-#' permutation — no inner loop required.
+#' For each iteration, simulates control and treatment arms, computes copula-based
+#' PFS curves, and uses a permutation test on the observed AUC difference to obtain
+#' a p-value. The permutation test is valid regardless of the number of time points.
 #'
 #' @param n_times,n_patients,n_iterations,mean_ctrl,mean_trt,covariance,
 #'   alpha_coef,beta_ctrl,beta_trt,gamma,alpha_level,threshold,seed
-#'   same as before
+#'   same as logrank_power
+#' @param n_perm number of permutations per iteration (default 500)
 #'
 #' @return list: power, mean_auc_diff, p_values
 #'
-#' @importFrom stats wilcox.test
 #' @export
 frank_copula_power <- function(n_times,
-                                      n_patients,
-                                      n_iterations,
-                                      mean_ctrl,
-                                      mean_trt,
-                                      covariance,
-                                      alpha_coef,
-                                      beta_ctrl   = 0,
-                                      beta_trt,
-                                      gamma,
-                                      copula_family = 5,
-                                      alpha_level   = 0.05,
-                                      threshold     = 1.2,
-                                      seed          = NULL) {
+                               n_patients,
+                               n_iterations,
+                               mean_ctrl,
+                               mean_trt,
+                               covariance,
+                               alpha_coef,
+                               beta_ctrl   = 0,
+                               beta_trt,
+                               gamma,
+                               copula_family = 5,
+                               alpha_level   = 0.05,
+                               threshold     = 1.2,
+                               n_perm        = 500,
+                               seed          = NULL) {
 
+  if (!is.null(seed)) set.seed(seed)
 
   p_values  <- rep(NA_real_, n_iterations)
   auc_diffs <- rep(NA_real_, n_iterations)
@@ -99,15 +101,21 @@ frank_copula_power <- function(n_times,
 
     if (is.null(pfs_ctrl) || is.null(pfs_trt)) next
 
-    auc_diffs[i] <- mean(pfs_trt - pfs_ctrl)
+    obs_diff <- mean(pfs_trt - pfs_ctrl)
+    auc_diffs[i] <- obs_diff
 
-    # paired Wilcoxon on pointwise differences across the 5 time points
-    p_values[i] <- tryCatch(
-      wilcox.test(pfs_trt, pfs_ctrl, paired = TRUE, exact = FALSE)$p.value,
-      error   = function(e) NA_real_,
-      warning = function(w) wilcox.test(pfs_trt, pfs_ctrl,
-                                        paired = TRUE, exact = FALSE)$p.value
-    )
+    # Permutation test: pool the two PFS curves and repeatedly reshuffle
+    pooled <- c(pfs_ctrl, pfs_trt)
+    n_pool <- length(pooled)
+    half   <- n_pool / 2
+
+    perm_diffs <- replicate(n_perm, {
+      idx <- sample.int(n_pool, half, replace = FALSE)
+      mean(pooled[idx]) - mean(pooled[-idx])
+    })
+
+    # Two-sided p-value
+    p_values[i] <- mean(abs(perm_diffs) >= abs(obs_diff))
 
     if (i %% 100 == 0)
       cat(sprintf("  iteration %d / %d\n", i, n_iterations))
