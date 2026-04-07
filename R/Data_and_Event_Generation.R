@@ -188,6 +188,9 @@ generate_binary_data <- function(probabilities) {
 
 #' Define progression events based on new lesions or tumour growth
 #'
+#' If a new lesion is present \eqn{D_t=1}, or \deqn{z_{it} = 1.2\times\min(z_{i0}, \ldots, z_{i(t-1)}) \exp(\nu_{it})}
+#' an event has occurred.
+#'
 #' @param lesion_data Matrix (n × T) of 0/1 new-lesion indicators
 #' @param tumour_size_data Matrix (n × (T+1)) of tumour sizes including baseline
 #' @param threshold Numeric. Growth threshold for progression (default 1.2)
@@ -220,5 +223,5 @@ event_definition <- function(lesion_data, tumour_size_data, threshold = 1.2) {
   time[no_event] <- n_times
   status         <- as.integer(!no_event)
 
-  data.frame(time = time, status = status)
+  return(data.frame(time = time, status = status))
 }

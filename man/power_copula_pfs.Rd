@@ -53,8 +53,6 @@ A data frame with columns:
   Power      - estimated power at that time point
   TypeI      - estimated type I error (run separately with beta=0)
   MeanDiff   - mean estimated PFS difference (treated - control)
-
-  @export
 }
 \description{
 Compares copula-based PFS curves between a treated (R=1) and control (R=0)

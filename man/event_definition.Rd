@@ -17,5 +17,6 @@ event_definition(lesion_data, tumour_size_data, threshold = 1.2)
 Data frame with time and status for each patient
 }
 \description{
-Define progression events based on new lesions or tumour growth
+If a new lesion is present \eqn{D_t=1}, or \deqn{z_{it} = 1.2\times\min(z_{i0}, \ldots, z_{i(t-1)}) \exp(\nu_{it})}
+an event has occurred.
 }

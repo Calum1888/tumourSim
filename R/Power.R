@@ -25,7 +25,8 @@
 #'   TypeI      - estimated type I error (run separately with beta=0)
 #'   MeanDiff   - mean estimated PFS difference (treated - control)
 #'
-#'   @export
+#' @importFrom stats qnorm
+#' @export
 power_copula_pfs <- function(n_times, n_patients, n_iterations,
                              mean, covariance,
                              alpha_coef, beta, gamma,
