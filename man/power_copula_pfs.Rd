@@ -23,7 +23,7 @@ power_copula_pfs(
 \arguments{
 \item{n_times}{Integer. Number of follow-up time points.}
 
-\item{n_patients}{Integer. Patients *per arm*.}
+\item{n_patients}{Integer. Patients per arm.}
 
 \item{n_iterations}{Integer. Number of Monte Carlo outer iterations.}
 

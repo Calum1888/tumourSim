@@ -44,7 +44,7 @@ power_copula_pfs <- function(n_times, n_patients, n_iterations,
     # ---- Simulate control arm (R = 0) ----------------------------------------
     res0 <- tryCatch({
       coeffs0 <- generate_coefficients(n_times, n_patients, alpha_coef, beta=0,    gamma, R=0)
-      cont0   <- generate_continuous_data(n_times, n_patients, mean, covariance)
+      cont0   <- generate_continuous_data(n_times, n_patients, (mean + 0.1), covariance)
       Z0      <- recover_tumour_sizes(cont0$baseline_tumour_size, cont0$log_tumour_size_ratio)
       p0      <- compute_new_lesion_probability(coeffs0, Z0[, 1:n_times, drop=FALSE])
       L0      <- generate_binary_data(p0)
