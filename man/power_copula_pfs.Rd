@@ -49,14 +49,13 @@ power_copula_pfs(
 }
 \value{
 A data frame with columns:
-  Time       - follow-up time point
-  Power      - estimated power at that time point
-  TypeI      - estimated type I error (run separately with beta=0)
-  MeanDiff   - mean estimated PFS difference (treated - control)
+  Time      - follow-up time point
+  Power     - rejection rate at that time point (= type I error when beta = 0)
+  MeanDiff  - mean estimated PFS difference (treated - control)
 }
 \description{
 Compares copula-based PFS curves between a treated (R=1) and control (R=0)
 arm across n_iterations simulated trials. At each time point, a Z-test is
 formed using bootstrap standard errors. Power is the proportion of
-iterations in which H0 is rejected.
+iterations in which H0 is rejected. Set beta = 0 to estimate type I error.
 }
