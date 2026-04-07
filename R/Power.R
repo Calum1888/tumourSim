@@ -6,7 +6,7 @@
 #' iterations in which H0 is rejected.
 #'
 #' @param n_times        Integer. Number of follow-up time points.
-#' @param n_patients     Integer. Patients *per arm*.
+#' @param n_patients     Integer. Patients per arm.
 #' @param n_iterations   Integer. Number of Monte Carlo outer iterations.
 #' @param mean           Numeric vector (length n_times). MVN mean for log tumour ratios.
 #' @param covariance     Numeric matrix (n_times x n_times). MVN covariance.
