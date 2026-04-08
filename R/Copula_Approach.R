@@ -401,29 +401,24 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
 #' @export
 run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covariance,
                                   alpha, beta, gamma, R, copula_family,
-                                  B = 500, threshold = 1.2) {
+                                  B = 100, threshold = 1.2) {
 
-  # get true PFS from large cohort
   true_rate <- get_true_rates(n_times, n_true_patients = 100000, mean, covariance,
                               alpha, beta, gamma, R, threshold)$surv
 
-  surv_prob_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
-  conf_low_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_times)
-  conf_high_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
+  n_cores <- max(1L, detectCores(logical = FALSE) - 1L)
 
-  for (i in seq_len(n_iterations)) {
+  results <- mclapply(seq_len(n_iterations), function(i) {
 
-    # generate fresh dataset
-    coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
-    cont   <- generate_continuous_data(n_times, n_patients, mean, covariance)
-    Z      <- recover_tumour_sizes(cont$baseline_tumour_size,
-                                   cont$log_tumour_size_ratio)
-    p      <- compute_new_lesion_probability(coeffs, Z[, 1:n_times, drop = FALSE])
-    L      <- generate_binary_data(p)
+    tryCatch({
+      coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
+      cont   <- generate_continuous_data(n_times, n_patients, mean, covariance)
+      Z      <- recover_tumour_sizes(cont$baseline_tumour_size,
+                                     cont$log_tumour_size_ratio)
+      p      <- compute_new_lesion_probability(coeffs, Z[, 1:n_times, drop = FALSE])
+      L      <- generate_binary_data(p)
 
-    # run bootstrap copula
-    res <- tryCatch(
-      bootstrap_copula_pfs(
+      res <- bootstrap_copula_pfs(
         lesion_data      = L,
         tumour_size_data = Z,
         n_times          = n_times,
@@ -433,26 +428,29 @@ run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covar
         true_pfs         = true_rate,
         threshold        = threshold,
         seed             = NULL
-      ),
-      error = function(e) NULL
-    )
+      )
 
-    if (!is.null(res)) {
-      surv_prob_matrix[i, ] <- colMeans(res$boot_curves)
-      conf_low_matrix[i, ]  <- res$ci_lower
-      conf_high_matrix[i, ] <- res$ci_upper
-    }
-  }
+      list(
+        surv     = colMeans(res$boot_curves),
+        ci_lower = res$ci_lower,
+        ci_upper = res$ci_upper
+      )
+    }, error = function(e) NULL)
 
-  covered  <- sweep(conf_low_matrix,  2, true_rate, "<=") &
-    sweep(conf_high_matrix, 2, true_rate, ">=")
-  coverage <- colMeans(covered,  na.rm = TRUE)
-  ci_width <- colMeans(conf_high_matrix - conf_low_matrix, na.rm = TRUE)
-  mean_surv <- colMeans(surv_prob_matrix, na.rm = TRUE)
+  }, mc.cores = n_cores)
 
-  return(data.frame(
-    Rate     = round(mean_surv, 3),
-    CI_Width = round(ci_width,  3),
-    Coverage = round(coverage,  3)
-  ))
+  results <- Filter(Negate(is.null), results)
+
+  surv_matrix  <- do.call(rbind, lapply(results, `[[`, "surv"))
+  lower_matrix <- do.call(rbind, lapply(results, `[[`, "ci_lower"))
+  upper_matrix <- do.call(rbind, lapply(results, `[[`, "ci_upper"))
+
+  covered  <- sweep(lower_matrix, 2, true_rate, "<=") &
+    sweep(upper_matrix, 2, true_rate, ">=")
+
+  data.frame(
+    Rate     = round(colMeans(surv_matrix),              3),
+    CI_Width = round(colMeans(upper_matrix - lower_matrix), 3),
+    Coverage = round(colMeans(covered),                  3)
+  )
 }

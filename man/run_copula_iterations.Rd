@@ -15,7 +15,7 @@ run_copula_iterations(
   gamma,
   R,
   copula_family,
-  B = 500,
+  B = 100,
   threshold = 1.2
 )
 }

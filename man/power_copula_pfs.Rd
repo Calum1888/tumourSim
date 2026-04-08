@@ -14,7 +14,7 @@ power_copula_pfs(
   beta,
   gamma,
   copula_family,
-  B = 200,
+  B = 100,
   alpha_level = 0.05,
   threshold = 1.2,
   seed = NULL

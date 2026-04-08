@@ -25,29 +25,28 @@
 #'   MeanDiff  - mean estimated PFS difference (treated - control)
 #'
 #' @importFrom stats qnorm
+#' @importFrom parallel detectCores mclapply
 #' @export
 power_copula_pfs <- function(n_times, n_patients, n_iterations,
                              mean, covariance,
                              alpha_coef, beta, gamma,
-                             copula_family, B = 200,
+                             copula_family, B = 100,
                              alpha_level = 0.05,
                              threshold = 1.2,
                              seed = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
 
-  # true PFS per arm for meaningful coverage (R=0 and R=1)
   true_pfs0 <- get_true_rates(n_times, 100000, mean, covariance,
                               alpha_coef, beta, gamma, R=0, threshold)$surv
   true_pfs1 <- get_true_rates(n_times, 100000, mean, covariance,
                               alpha_coef, beta, gamma, R=1, threshold)$surv
 
-  reject_matrix <- matrix(NA, nrow = n_iterations, ncol = n_times)
-  diff_matrix   <- matrix(NA, nrow = n_iterations, ncol = n_times)
+  n_cores <- max(1L, detectCores(logical = FALSE) - 1L)
 
-  for (i in seq_len(n_iterations)) {
+  # Each element of results is a length-2 list: reject (n_times) + diff (n_times)
+  results <- mclapply(seq_len(n_iterations), function(i) {
 
-    # ---- Simulate control arm (R = 0) ----------------------------------------
     res0 <- tryCatch({
       coeffs0 <- generate_coefficients(n_times, n_patients, alpha_coef, beta, gamma, R=0)
       cont0   <- generate_continuous_data(n_times, n_patients, mean, covariance)
@@ -59,7 +58,6 @@ power_copula_pfs <- function(n_times, n_patients, n_iterations,
                            threshold=threshold)
     }, error = function(e) NULL)
 
-    # ---- Simulate treated arm (R = 1, beta active) ---------------------------
     res1 <- tryCatch({
       coeffs1 <- generate_coefficients(n_times, n_patients, alpha_coef, beta, gamma, R=1)
       cont1   <- generate_continuous_data(n_times, n_patients, mean, covariance)
@@ -71,29 +69,30 @@ power_copula_pfs <- function(n_times, n_patients, n_iterations,
                            threshold=threshold)
     }, error = function(e) NULL)
 
-    if (is.null(res0) || is.null(res1)) next
+    if (is.null(res0) || is.null(res1)) return(NULL)
 
-    # ---- Pointwise Z-test at each time t -------------------------------------
-    pfs0 <- colMeans(res0$boot_curves)
-    pfs1 <- colMeans(res1$boot_curves)
-
+    pfs0   <- colMeans(res0$boot_curves)
+    pfs1   <- colMeans(res1$boot_curves)
     z_crit <- qnorm(1 - alpha_level / 2)
-    se0 <- (res0$ci_upper - res0$ci_lower) / (2 * z_crit)
-    se1 <- (res1$ci_upper - res1$ci_lower) / (2 * z_crit)
+    se0    <- (res0$ci_upper - res0$ci_lower) / (2 * z_crit)
+    se1    <- (res1$ci_upper - res1$ci_lower) / (2 * z_crit)
+    Z_stat <- (pfs1 - pfs0) / sqrt(se0^2 + se1^2)
 
-    se_diff <- sqrt(se0^2 + se1^2)
-    Z_stat  <- (pfs1 - pfs0) / se_diff
+    list(
+      reject = as.integer(abs(Z_stat) > z_crit),
+      diff   = pfs1 - pfs0
+    )
+  }, mc.cores = n_cores)
 
-    reject_matrix[i, ] <- as.integer(abs(Z_stat) > z_crit)
-    diff_matrix[i, ]   <- pfs1 - pfs0
-  }
+  # Drop failed iterations
+  results <- Filter(Negate(is.null), results)
 
-  power     <- colMeans(reject_matrix, na.rm = TRUE)
-  mean_diff <- colMeans(diff_matrix,   na.rm = TRUE)
+  reject_matrix <- do.call(rbind, lapply(results, `[[`, "reject"))
+  diff_matrix   <- do.call(rbind, lapply(results, `[[`, "diff"))
 
   data.frame(
     Time     = seq_len(n_times),
-    Power    = round(power,     3),
-    MeanDiff = round(mean_diff, 3)
+    Power    = round(colMeans(reject_matrix), 3),
+    MeanDiff = round(colMeans(diff_matrix),   3)
   )
 }
