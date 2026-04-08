@@ -398,6 +398,7 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
 #'     \item{Coverage}{Proportion of CIs containing the true rate at each time point.}
 #'   }
 #'
+#' @importFrom parallel detectCores mclapply
 #' @export
 run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covariance,
                                   alpha, beta, gamma, R, copula_family,
