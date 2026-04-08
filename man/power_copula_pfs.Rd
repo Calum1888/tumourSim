@@ -59,3 +59,9 @@ arm across n_iterations simulated trials. At each time point, a Z-test is
 formed using bootstrap standard errors. Power is the proportion of
 iterations in which H0 is rejected. Set beta = 0 to estimate type I error.
 }
+\details{
+Parallelisation is controlled by the caller via the \code{future}
+backend. Call \code{future::plan(multisession)} before running
+this function to enable parallel computation across iterations.
+If no plan is set, execution falls back to sequential.
+}

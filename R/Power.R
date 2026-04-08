@@ -24,8 +24,14 @@
 #'   Power     - rejection rate at that time point (= type I error when beta = 0)
 #'   MeanDiff  - mean estimated PFS difference (treated - control)
 #'
+#' @details
+#' Parallelisation is controlled by the caller via the \code{future}
+#' backend. Call \code{future::plan(multisession)} before running
+#' this function to enable parallel computation across iterations.
+#' If no plan is set, execution falls back to sequential.
+#'
 #' @importFrom stats qnorm
-#' @importFrom parallel detectCores mclapply
+#' @importFrom future.apply future_lapply
 #' @export
 power_copula_pfs <- function(n_times, n_patients, n_iterations,
                              mean, covariance,
@@ -42,10 +48,7 @@ power_copula_pfs <- function(n_times, n_patients, n_iterations,
   true_pfs1 <- get_true_rates(n_times, 100000, mean, covariance,
                               alpha_coef, beta, gamma, R=1, threshold)$surv
 
-  n_cores <- max(1L, detectCores(logical = FALSE) - 1L)
-
-  # Each element of results is a length-2 list: reject (n_times) + diff (n_times)
-  results <- mclapply(seq_len(n_iterations), function(i) {
+  results <- future_lapply(seq_len(n_iterations), function(i) {
 
     res0 <- tryCatch({
       coeffs0 <- generate_coefficients(n_times, n_patients, alpha_coef, beta, gamma, R=0)
@@ -82,9 +85,8 @@ power_copula_pfs <- function(n_times, n_patients, n_iterations,
       reject = as.integer(abs(Z_stat) > z_crit),
       diff   = pfs1 - pfs0
     )
-  }, mc.cores = n_cores)
+  }, future.seed = TRUE)
 
-  # Drop failed iterations
   results <- Filter(Negate(is.null), results)
 
   reject_matrix <- do.call(rbind, lapply(results, `[[`, "reject"))

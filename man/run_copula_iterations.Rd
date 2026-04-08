@@ -59,3 +59,9 @@ Repeatedly generates fresh datasets and applies the bootstrap copula method,
 returning pointwise coverage, mean CI width, and mean survival estimate
 across all iterations — analogous to run_iterations() in Simulations.R.
 }
+\details{
+Parallelisation is controlled by the caller via the \code{future}
+backend. Call \code{future::plan(multisession)} before running
+this function to enable parallel computation across iterations.
+If no plan is set, execution falls back to sequential.
+}

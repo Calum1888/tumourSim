@@ -398,7 +398,13 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
 #'     \item{Coverage}{Proportion of CIs containing the true rate at each time point.}
 #'   }
 #'
-#' @importFrom parallel detectCores mclapply
+#' @details
+#' Parallelisation is controlled by the caller via the \code{future}
+#' backend. Call \code{future::plan(multisession)} before running
+#' this function to enable parallel computation across iterations.
+#' If no plan is set, execution falls back to sequential.
+#'
+#' @importFrom future.apply future_lapply
 #' @export
 run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covariance,
                                   alpha, beta, gamma, R, copula_family,
@@ -407,9 +413,7 @@ run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covar
   true_rate <- get_true_rates(n_times, n_true_patients = 100000, mean, covariance,
                               alpha, beta, gamma, R, threshold)$surv
 
-  n_cores <- max(1L, detectCores(logical = FALSE) - 1L)
-
-  results <- mclapply(seq_len(n_iterations), function(i) {
+  results <- future_lapply(seq_len(n_iterations), function(i) {
 
     tryCatch({
       coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
@@ -438,7 +442,7 @@ run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covar
       )
     }, error = function(e) NULL)
 
-  }, mc.cores = n_cores)
+  }, future.seed = TRUE)
 
   results <- Filter(Negate(is.null), results)
 
@@ -446,12 +450,12 @@ run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covar
   lower_matrix <- do.call(rbind, lapply(results, `[[`, "ci_lower"))
   upper_matrix <- do.call(rbind, lapply(results, `[[`, "ci_upper"))
 
-  covered  <- sweep(lower_matrix, 2, true_rate, "<=") &
+  covered <- sweep(lower_matrix, 2, true_rate, "<=") &
     sweep(upper_matrix, 2, true_rate, ">=")
 
   data.frame(
-    Rate     = round(colMeans(surv_matrix),              3),
+    Rate     = round(colMeans(surv_matrix),                3),
     CI_Width = round(colMeans(upper_matrix - lower_matrix), 3),
-    Coverage = round(colMeans(covered),                  3)
+    Coverage = round(colMeans(covered),                    3)
   )
 }
