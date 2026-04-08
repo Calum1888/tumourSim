@@ -361,13 +361,19 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
   if (n_valid == 0) stop("All bootstrap iterations failed.")
   if (n_valid < B)  warning(sprintf("%d of %d iterations failed.", B - n_valid, B))
 
-  ci_lower <- apply(boot_curves, 2, quantile, probs = alpha_level / 2)
-  ci_upper <- apply(boot_curves, 2, quantile, probs = 1 - alpha_level / 2)
+  # --- Normal-based CI using bootstrap SD ---
+  z <- qnorm(1 - alpha_level / 2)
+
+  boot_means <- colMeans(boot_curves)
+  boot_sds   <- apply(boot_curves, 2, sd)
+
+  ci_lower <- boot_means - z * boot_sds
+  ci_upper <- boot_means + z * boot_sds
   coverage <- as.integer(true_pfs >= ci_lower & true_pfs <= ci_upper)
 
-  list(boot_curves = boot_curves, ci_lower = ci_lower, ci_upper = ci_upper,
+  return(list(boot_curves = boot_curves, ci_lower = ci_lower, ci_upper = ci_upper,
        coverage = coverage, mean_coverage = mean(coverage),
-       mean_ci_width = mean(ci_upper - ci_lower))
+       mean_ci_width = mean(ci_upper - ci_lower)))
 }
 
 #' Run bootstrap copula PFS estimation for n iterations
