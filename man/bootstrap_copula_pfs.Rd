@@ -9,7 +9,7 @@ bootstrap_copula_pfs(
   tumour_size_data,
   n_times,
   copula_family,
-  B = 500,
+  B = 100,
   alpha_level = 0.05,
   true_pfs,
   threshold = 1.2,
