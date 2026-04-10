@@ -2,8 +2,6 @@
 
 An R package implementing a copula-based approach to estimate progression-free survival (PFS) by jointly modelling tumour progression and new lesion appearance, following the RECIST framework.
 
-This work accompanies the dissertation *Applications of copula modelling to continuous and binary variables in survival analysis* (Calum Regan, 2025–2026).
-
 ---
 
 ## Background
@@ -25,7 +23,7 @@ where $C$ is a bivariate copula fitted to pseudo-observations derived from the m
 
 ```r
 # Install dependencies
-install.packages(c("survival", "VineCopula", "MASS"))
+install.packages(c("survival", "VineCopula", "MASS", "ggplot2", "rlang", "parallel", "scales", "patchwork"))
 
 # Install from source
 devtools::install_github("Calum1888/tumourSim")
@@ -137,7 +135,6 @@ Returns pointwise Kaplan–Meier survival estimates for each marginal endpoint a
 `bootstrap_copula_pfs()` draws `B` subject-level bootstrap resamples and computes pointwise percentile confidence intervals, coverage against a known true PFS curve, and average CI width.
 
 ```r
-true_pfs <- exp(-0.15 * 1:5)   # known true curve (simulation context)
 
 result <- bootstrap_copula_pfs(
   lesion_data      = lesion_data,
@@ -163,34 +160,6 @@ Failed bootstrap iterations (e.g. degenerate resamples causing copula fitting to
 
 ---
 
-## Simulation Results
-
-The table below reproduces the simulation results from the dissertation, comparing the copula estimator to the Kaplan–Meier estimator over 1000 replications with 150 patients.
-
-**5 time points**
-
-| Time | True S(t) | KM estimate | Copula estimate | KM coverage | KM avg CI width |
-|------|-----------|-------------|-----------------|-------------|-----------------|
-| 1    | 0.561     | 0.562       | —               | 0.955       | 0.159           |
-| 2    | 0.304     | 0.307       | —               | 0.955       | 0.148           |
-| 3    | 0.193     | 0.195       | —               | 0.961       | 0.128           |
-| 4    | 0.101     | 0.103       | —               | 0.960       | 0.100           |
-| 5    | 0.055     | 0.056       | —               | 0.954       | 0.078           |
-
-**7 time points**
-
-| Time | True S(t) | KM estimate | Copula estimate | KM coverage | KM avg CI width |
-|------|-----------|-------------|-----------------|-------------|-----------------|
-| 1    | 0.712     | 0.717       | —               | 0.946       | 0.144           |
-| 2    | 0.473     | 0.478       | —               | 0.936       | 0.160           |
-| 3    | 0.301     | 0.303       | —               | 0.949       | 0.148           |
-| 4    | 0.162     | 0.163       | —               | 0.952       | 0.120           |
-| 5    | 0.095     | 0.094       | —               | 0.958       | 0.097           |
-| 6    | 0.058     | 0.058       | —               | 0.959       | 0.079           |
-| 7    | 0.019     | 0.019       | —               | 0.978       | 0.055           |
-
----
-
 ## Testing
 
 Tests are written with `testthat`. Run them with:
@@ -204,23 +173,3 @@ Slow bootstrap tests are marked `skip_on_cran()` and use a small `B` for speed. 
 ```r
 covr::report()
 ```
-
----
-
-## Dependencies
-
-| Package      | Role                                        |
-|--------------|---------------------------------------------|
-| `survival`   | Kaplan–Meier estimation via `survfit()`     |
-| `VineCopula` | Copula fitting via `BiCopSelect()`, `BiCopCDF()` |
-| `MASS`       | Multivariate normal simulation via `mvrnorm()` |
-
----
-
-## References
-
-- Eisenhauer et al. (2009). New response evaluation criteria in solid tumours: Revised RECIST guideline (version 1.1). *European Journal of Cancer*, 45(2), 228–247.
-- Lin & Wason (2020). Efficient analysis of time-to-event endpoints when the event involves a continuous variable crossing a threshold. *Journal of Statistical Planning and Inference*, 208, 119–129.
-- Nelsen, R.B. (2006). *An Introduction to Copulas*. Springer.
-- Kaplan, E.L. & Meier, P. (1958). Nonparametric estimation from incomplete observations. *JASA*, 53, 457–481.
-- Sklar, M. (1959). Fonctions de répartition à N dimensions et leurs marges. *Annales de l'ISUP*.
