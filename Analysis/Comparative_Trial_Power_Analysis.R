@@ -21,14 +21,14 @@ power_curve <- lapply(betas, function(b) {
   res <- power_copula_pfs(
     n_times       = n_times,
     n_patients    = 100,
-    n_iterations  = 100,   # increase for stable estimates
+    n_iterations  = 1000,   # increase for stable estimates
     mean          = mean_vec,
     covariance    = covariance,
     alpha_coef    = -1.5,
     beta          = b,
     gamma         = 0.2,
     copula_family = 5,
-    B             = 50,
+    B             = 200,
     seed          = 42
   )
   res$beta <- b
@@ -37,6 +37,8 @@ power_curve <- lapply(betas, function(b) {
 
 power_curve_df <- do.call(rbind, power_curve)
 
+plot_power_curve(power_df = power_curve_df,
+                 title = "Power Curve for Different Treatment Effects")
 
 # Define your scenarios in a named list
 scenarios <- list(
@@ -51,15 +53,15 @@ fixed_beta <- -0.5
 scenario_results <- lapply(names(scenarios), function(s_name) {
   res <- power_copula_pfs(
     n_times       = 5,
-    n_patients    = 1000,
-    n_iterations  = 10,
+    n_patients    = 100,
+    n_iterations  = 1000,
     mean          = scenarios[[s_name]], # Pass the scenario vector
     covariance    = covariance,
     alpha_coef    = -1.5,
     beta          = fixed_beta,          # Keep beta fixed
     gamma         = 0.2,
     copula_family = 5,
-    B             = 100,
+    B             = 200,
     seed          = 42
   )
   res$scenario <- s_name
