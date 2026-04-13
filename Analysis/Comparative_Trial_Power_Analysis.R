@@ -39,7 +39,7 @@ log_rank_power <- lapply(betas, function(b){
   res_log <- power_logrank_pfs(
     n_times = n_times,
     n_patients = 100,
-    n_iterations = 100,
+    n_iterations = 1000,
     mean = mean_vec,
     covariance = covariance,
     alpha_coef = -1.5,
@@ -86,7 +86,30 @@ scenario_results <- lapply(names(scenarios), function(s_name) {
   return(res)
 })
 
+log_rank_scenarios <- lapply(names(scenarios), function(s_name){
+  log_res <- power_logrank_pfs(
+    n_times = n_times,
+    n_patients = 100,
+    n_iterations = 1000,
+    mean = scenarios[[s_name]],
+    covariance = covariance,
+    alpha_coef = -1.5,
+    beta = fixed_beta,
+    gamma = 0.2,
+    alpha_level = 0.05,
+    threshold = 1.2,
+    seed = 42
+
+  )
+})
+
+
 final_df <- do.call(rbind, scenario_results)
 
+log_final_df <- do.call(rbind, log_rank_scenarios)
+
 write.csv(power_curve_df, file = "Power_Curve_DF")
+write.csv(log_power_df, file = "Log_Rank_Scenario1to4")
 write.csv(final_df, file = "cross_diff_increase_scenarios")
+write.csv(log_final_df, file = "log_rank_scenario5to7")
+
