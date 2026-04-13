@@ -296,7 +296,7 @@ plot_power_curve <- function(power_df,
     ggplot2::scale_colour_manual(
       values = colours,
       labels = if (single_beta) NULL else
-        setNames(
+        base::setNames(
           paste0("\u03b2 = ", levels(power_df$beta)),
           levels(power_df$beta)
         ),
