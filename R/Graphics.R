@@ -244,7 +244,9 @@ plot_power_curve <- function(power_df,
     "#8073AC", "#E08214", "#01665E"
   )
   n_betas <- nlevels(power_df$beta)
-  colours  <- base::setNames(palette[seq_len(n_betas)], levels(power_df$beta))
+
+  colours <- palette[seq_len(n_betas)]
+  names(colours) <- levels(power_df$beta)
 
   # ---- shared theme (mirrors Graphics.R) -------------------------------------
   power_theme <- ggplot2::theme_minimal(base_size = 13) +
@@ -295,11 +297,8 @@ plot_power_curve <- function(power_df,
     ) +
     ggplot2::scale_colour_manual(
       values = colours,
-      labels = if (single_beta) NULL else
-        base::setNames(
-          paste0("\u03b2 = ", levels(power_df$beta)),
-          levels(power_df$beta)
-        ),
+      beta_labels <- paste0("\u03b2 = ", levels(power_df$beta)),
+      names(beta_labels) <- levels(power_df$beta),
       guide = ggplot2::guide_legend(title = "\u03b2")
     ) +
     ggplot2::labs(
