@@ -286,6 +286,11 @@ plot_power_curve <- function(power_df,
     )
   }
 
+  # --- define labels before the plot ---
+  beta_labels <- paste0("\u03b2 = ", levels(power_df$beta))
+  names(beta_labels) <- levels(power_df$beta)
+
+  # --- then the plot block ---
   p <- p +
     ggplot2::scale_y_continuous(
       limits = c(0, 1),
@@ -297,9 +302,8 @@ plot_power_curve <- function(power_df,
     ) +
     ggplot2::scale_colour_manual(
       values = colours,
-      beta_labels <- paste0("\u03b2 = ", levels(power_df$beta)),
-      names(beta_labels) <- levels(power_df$beta),
-      guide = ggplot2::guide_legend(title = "\u03b2")
+      labels = if (single_beta) NULL else beta_labels,
+      guide  = ggplot2::guide_legend(title = "\u03b2")
     ) +
     ggplot2::labs(
       title    = title,
