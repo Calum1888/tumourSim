@@ -177,3 +177,143 @@ plot_pfs_estimates <- function(km_results,
 
   return(combined)
 }
+
+#' Plot power curves over time for one or more beta values
+#'
+#' Produces a ggplot2 figure showing estimated power at each follow-up time
+#' point, with one line per value of \code{beta}. An optional horizontal
+#' reference line marks the nominal significance level (type I error).
+#'
+#' @param power_df   Data frame returned by stacking multiple calls to
+#'   \code{power_copula_pfs()}, with columns \code{Time}, \code{Power},
+#'   \code{MeanDiff}, and \code{beta}. A single-beta data frame (no \code{beta}
+#'   column) is also accepted.
+#' @param alpha_level Numeric. Nominal significance level drawn as a horizontal
+#'   reference line. Set to \code{NULL} to suppress. Default \code{0.05}.
+#' @param title      Optional character string used as the plot title.
+#' @param subtitle   Optional character string used as the plot subtitle.
+#'
+#' @return A \code{ggplot} object.
+#'
+#' @details
+#' If \code{power_df} contains a \code{beta} column it is converted to a
+#' factor so each level receives a distinct colour from a accessible palette.
+#' Points are overlaid on lines to highlight the discrete time grid.
+#'
+#' @examples
+#' \dontrun{
+#' betas <- c(-0.2, -0.5, -0.8)
+#' power_curve <- lapply(betas, function(b) {
+#'   res       <- power_copula_pfs(...)
+#'   res$beta  <- b
+#'   res
+#' })
+#' power_curve_df <- do.call(rbind, power_curve)
+#' plot_power_curve(power_curve_df)
+#' }
+#'
+#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_hline
+#'   scale_y_continuous scale_x_continuous scale_colour_manual
+#'   labs theme_minimal theme element_text element_line element_blank
+#'   margin guide_legend
+#' @importFrom rlang .data
+#' @export
+plot_power_curve <- function(power_df,
+                             alpha_level = 0.05,
+                             title       = NULL,
+                             subtitle    = NULL) {
+
+  # ---- input checks -----------------------------------------------------------
+  required_cols <- c("Time", "Power")
+  if (!all(required_cols %in% names(power_df)))
+    stop("power_df must contain at least columns: Time, Power")
+
+  # ---- handle single-beta input -----------------------------------------------
+  if (!"beta" %in% names(power_df)) {
+    power_df$beta <- "beta"          # single unlabelled group
+    single_beta   <- TRUE
+  } else {
+    single_beta <- FALSE
+  }
+
+  power_df$beta <- factor(power_df$beta)
+
+  # ---- colour palette (colourblind-friendly) ----------------------------------
+  palette <- c(
+    "#2166AC", "#D6604D", "#4DAC26",
+    "#8073AC", "#E08214", "#01665E"
+  )
+  n_betas <- nlevels(power_df$beta)
+  colours  <- setNames(palette[seq_len(n_betas)], levels(power_df$beta))
+
+  # ---- shared theme (mirrors Graphics.R) -------------------------------------
+  power_theme <- ggplot2::theme_minimal(base_size = 13) +
+    ggplot2::theme(
+      plot.title       = ggplot2::element_text(face = "bold", size = 14,
+                                               margin = ggplot2::margin(b = 8)),
+      plot.subtitle    = ggplot2::element_text(size = 11, colour = "grey40",
+                                               margin = ggplot2::margin(b = 10)),
+      axis.title       = ggplot2::element_text(size = 11),
+      axis.text        = ggplot2::element_text(size = 10),
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_line(colour = "grey90"),
+      legend.position  = if (single_beta) "none" else "bottom",
+      legend.title     = ggplot2::element_text(size = 10, face = "bold")
+    )
+
+  # ---- build plot -------------------------------------------------------------
+  p <- ggplot2::ggplot(
+    power_df,
+    ggplot2::aes(
+      x      = .data$Time,
+      y      = .data$Power,
+      colour = .data$beta,
+      group  = .data$beta
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.9) +
+    ggplot2::geom_point(size = 2.5)
+
+  # reference line at alpha_level
+  if (!is.null(alpha_level)) {
+    p <- p + ggplot2::geom_hline(
+      yintercept = alpha_level,
+      linetype   = "dashed",
+      linewidth  = 0.6,
+      colour     = "grey50"
+    )
+  }
+
+  p <- p +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1),
+      breaks = seq(0, 1, by = 0.2),
+      labels = scales::number_format(accuracy = 0.01)
+    ) +
+    ggplot2::scale_x_continuous(
+      breaks = unique(power_df$Time)
+    ) +
+    ggplot2::scale_colour_manual(
+      values = colours,
+      labels = if (single_beta) NULL else
+        setNames(
+          paste0("\u03b2 = ", levels(power_df$beta)),
+          levels(power_df$beta)
+        ),
+      guide = ggplot2::guide_legend(title = "\u03b2")
+    ) +
+    ggplot2::labs(
+      title    = title,
+      subtitle = subtitle,
+      x        = "Time",
+      y        = "Power"
+    ) +
+    power_theme
+
+  return(p)
+}
+
+
+
+
+
