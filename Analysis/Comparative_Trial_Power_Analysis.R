@@ -35,7 +35,25 @@ power_curve <- lapply(betas, function(b) {
   res
 })
 
+log_rank_power <- lapply(betas, function(b){
+  res_log <- power_logrank_pfs(
+    n_times = n_times,
+    n_patients = 100,
+    n_iterations = 100,
+    mean = mean_vec,
+    covariance = covariance,
+    alpha_coef = -1.5,
+    beta = b,
+    gamma = 0.2,
+    alpha_level = 0.05,
+    threshold = 1.2,
+    seed = 42
+  )
+})
+
 power_curve_df <- do.call(rbind, power_curve)
+
+log_power_df <- do.call(rbind, log_rank_power)
 
 plot_power_curve(power_df = power_curve_df,
                  title = "Power Curve for Different Treatment Effects")
