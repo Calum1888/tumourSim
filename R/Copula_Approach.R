@@ -302,7 +302,7 @@ copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 #' result$mean_ci_width
 #' }
 #'
-#' @importFrom stats complete.cases quantile
+#' @importFrom stats sd qnorm quantile complete.cases
 #' @export
 bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
                                  copula_family, B = 100,

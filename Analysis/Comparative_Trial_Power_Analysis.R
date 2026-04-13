@@ -15,7 +15,7 @@ covariance <- matrix(c(
 ), nrow = 5, byrow = TRUE)
 
 
-betas <- c(-0.5)
+betas <- c(0.0, -0.2, -0.5, -0.8)
 
 power_curve <- lapply(betas, function(b) {
   res <- power_copula_pfs(
@@ -26,7 +26,7 @@ power_curve <- lapply(betas, function(b) {
     covariance    = covariance,
     alpha_coef    = -1.5,
     beta          = b,
-    gamma         = 0.0,
+    gamma         = 0.2,
     copula_family = 5,
     B             = 50,
     seed          = 42
@@ -45,7 +45,7 @@ scenarios <- list(
   "Crossing"   = c(-0.50, -0.70, -0.63, -0.67, -0.72)
 )
 
-# Fix beta at -0.8 (or your choice)
+
 fixed_beta <- -0.5
 
 scenario_results <- lapply(names(scenarios), function(s_name) {

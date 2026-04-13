@@ -24,8 +24,6 @@ Imports:
   patchwork,
   scales,
   rlang,
-  parallel,
-  future,
   future.apply
 Suggests: 
     testthat (>= 3.0.0)
