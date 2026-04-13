@@ -69,3 +69,6 @@ scenario_results <- lapply(names(scenarios), function(s_name) {
 })
 
 final_df <- do.call(rbind, scenario_results)
+
+write.csv(power_curve_df, file = "Power_Curve_DF")
+write.csv(final_df, file = "cross_diff_increase_scenarios")
