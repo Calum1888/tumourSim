@@ -158,6 +158,7 @@ power_copula_pfs <- function(n_times, n_patients, n_iterations,
 #' @importFrom survival survdiff survfit Surv
 #' @importFrom stats pchisq
 #' @importFrom future.apply future_lapply
+#' @importFrom utils head tail read.csv
 #' @export
 power_logrank_pfs <- function(n_times, n_patients, n_iterations,
                               mean, covariance,
