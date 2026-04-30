@@ -629,3 +629,512 @@ copula_pfs_continuous <- function(lesion_events, tumour_events, n_times, copula_
 
   list(time = times, PFS = S_pfs, copula_fit = copula_fit)
 }
+
+##############################################################
+################################################################
+
+library(future)
+# =============================================================================
+# Continuous_Simulation.R  (v2 — fixed)
+#
+# Changes from v1:
+#
+#  * copula_margin_estimation_at() — new internal helper that evaluates KM
+#    marginals at a caller-supplied 'eval_times' vector instead of
+#    re-deriving max_t from the data each call.  This guarantees every
+#    bootstrap resample is evaluated on the *same* grid, preventing
+#    length-mismatch NAs that caused all iterations to fail.
+#
+#  * bootstrap_copula_pfs_continuous() — passes eval_times explicitly to the
+#    new helper instead of calling copula_margin_estimation_continuous().
+#    Also replaces the silent tryCatch-NULL approach with a message so errors
+#    are visible during debugging.
+#
+#  * run_copula_iterations_continuous() — adds an explicit check after
+#    filtering NULLs and returns an informative error instead of the cryptic
+#    "dims cannot be of length 0" from sweep().
+#
+# All other functions are unchanged from v1.
+# =============================================================================
+
+library(survival)
+library(VineCopula)
+library(future.apply)
+
+
+# -----------------------------------------------------------------------------
+# Internal helper — NOT exported
+# -----------------------------------------------------------------------------
+# Evaluates KM marginals at a fixed, caller-supplied grid.
+# Unlike copula_margin_estimation_continuous(), this never re-derives max_t,
+# so every bootstrap call uses the same eval_times.
+copula_margin_estimation_at <- function(lesion_events, tumour_events,
+                                        eval_times) {
+  fit_lesion <- survfit(Surv(time, status) ~ 1, data = lesion_events)
+  fit_tumour <- survfit(Surv(time, status) ~ 1, data = tumour_events)
+
+  S_D <- summary(fit_lesion, times = eval_times, extend = TRUE)$surv
+  S_Y <- summary(fit_tumour, times = eval_times, extend = TRUE)$surv
+
+  # Guard: summary.survfit can return shorter vectors when extend=TRUE still
+  # finds nothing beyond the last event.  Fill any shortfall with the last
+  # valid value (carry-forward), or 0 if entirely empty.
+  pad <- function(x, n) {
+    if (length(x) == n) return(x)
+    if (length(x) == 0) return(rep(0, n))
+    c(x, rep(x[length(x)], n - length(x)))
+  }
+
+  n <- length(eval_times)
+  data.frame(
+    LESION = pad(S_D, n),
+    TUMOUR = pad(S_Y, n)
+  )
+}
+
+
+# -----------------------------------------------------------------------------
+# 1. event_definition_continuous
+# -----------------------------------------------------------------------------
+#' Define progression events and return continuous-scale event times
+#'
+#' Identical logic to \code{event_definition()} but maps integer follow-up
+#' indices to real time values via \code{time_points}.
+#'
+#' @param lesion_data      Matrix (n x T) of 0/1 new-lesion indicators.
+#' @param tumour_size_data Matrix (n x (T+1)) of tumour sizes including baseline.
+#' @param time_points      Numeric vector of length T giving the real-time value
+#'   of each follow-up visit. Must be strictly increasing.
+#' @param threshold        Multiplicative threshold for tumour progression (default 1.2).
+#'
+#' @return A data frame with columns \code{time} (real-valued) and \code{status} (0/1).
+#' @export
+event_definition_continuous <- function(lesion_data, tumour_size_data,
+                                        time_points, threshold = 1.2) {
+  stopifnot(
+    is.numeric(time_points),
+    length(time_points) == ncol(lesion_data),
+    all(diff(time_points) > 0)
+  )
+
+  n_times <- length(time_points)
+
+  tumour      <- tumour_size_data[, -1, drop = FALSE]
+  prior_cols  <- tumour_size_data[, -ncol(tumour_size_data), drop = FALSE]
+  rolling_min <- t(apply(prior_cols, 1, cummin))
+  progression <- tumour > threshold * rolling_min
+
+  event_matrix <- (lesion_data == 1) | progression
+
+  no_event      <- rowSums(event_matrix) == 0
+  idx           <- max.col(event_matrix, ties.method = "first")
+  idx[no_event] <- n_times
+
+  time   <- time_points[idx]
+  status <- as.integer(!no_event)
+
+  data.frame(time = time, status = status)
+}
+
+
+# -----------------------------------------------------------------------------
+# 2. run_single_simulation_continuous
+# -----------------------------------------------------------------------------
+#' Run one simulation replicate and return a continuous-time KM summary
+#'
+#' @param n_times     Integer. Number of follow-up time points.
+#' @param n_patients  Integer. Number of patients.
+#' @param mean        Numeric vector (length \code{n_times}).
+#' @param covariance  Numeric matrix (n_times x n_times).
+#' @param alpha       Scalar logistic intercept.
+#' @param beta        Scalar treatment-effect parameter.
+#' @param gamma       Scalar tumour-size effect.
+#' @param R           Scalar or length-n_patients treatment indicator.
+#' @param time_points Numeric vector (length \code{n_times}) of real visit times.
+#' @param eval_times  Numeric vector at which to evaluate the returned KM summary.
+#'   Defaults to \code{time_points}.
+#' @param threshold   Tumour-growth threshold (default 1.2).
+#'
+#' @return A \code{summary.survfit} object evaluated at \code{eval_times}.
+#' @export
+run_single_simulation_continuous <- function(n_times, n_patients, mean,
+                                             covariance, alpha, beta, gamma,
+                                             R, time_points,
+                                             eval_times = time_points,
+                                             threshold = 1.2) {
+  coeffs       <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
+  cont         <- generate_continuous_data(n_times, n_patients, mean, covariance)
+  tumour_sizes <- recover_tumour_sizes(cont$baseline_tumour_size,
+                                       cont$log_tumour_size_ratio)
+  p            <- compute_new_lesion_probability(
+    coeffs, tumour_sizes[, 1:n_times, drop = FALSE])
+  lesions      <- generate_binary_data(p)
+
+  events <- event_definition_continuous(
+    lesion_data      = lesions,
+    tumour_size_data = tumour_sizes,
+    time_points      = time_points,
+    threshold        = threshold
+  )
+
+  fit <- survfit(Surv(time, status) ~ 1, data = events)
+  summary(fit, times = eval_times, extend = TRUE)
+}
+
+
+# -----------------------------------------------------------------------------
+# 3. get_true_rates_continuous
+# -----------------------------------------------------------------------------
+#' Estimate 'true' survival rates on the continuous time scale
+#'
+#' Simulates 100,000 patients and evaluates the KM curve at \code{eval_times}.
+#'
+#' @param n_times         Integer.
+#' @param n_true_patients Integer (default 100,000).
+#' @param mean            Numeric vector.
+#' @param covariance      Numeric matrix.
+#' @param alpha           Scalar.
+#' @param beta            Scalar.
+#' @param gamma           Scalar.
+#' @param R               Scalar or vector.
+#' @param time_points     Numeric vector (length \code{n_times}) of real visit times.
+#' @param eval_times      Numeric vector at which to evaluate survival.
+#'   Defaults to \code{time_points}.
+#' @param threshold       Default 1.2.
+#'
+#' @return A \code{summary.survfit} object.
+#' @export
+get_true_rates_continuous <- function(n_times, n_true_patients = 100000,
+                                      mean, covariance, alpha, beta, gamma,
+                                      R, time_points,
+                                      eval_times = time_points,
+                                      threshold = 1.2) {
+  run_single_simulation_continuous(
+    n_times     = n_times,
+    n_patients  = n_true_patients,
+    mean        = mean,
+    covariance  = covariance,
+    alpha       = alpha,
+    beta        = beta,
+    gamma       = gamma,
+    R           = R,
+    time_points = time_points,
+    eval_times  = eval_times,
+    threshold   = threshold
+  )
+}
+
+
+# -----------------------------------------------------------------------------
+# 4. bootstrap_copula_pfs_continuous  (fixed)
+# -----------------------------------------------------------------------------
+#' Bootstrap copula PFS on the continuous time scale
+#'
+#' Drop-in replacement for \code{bootstrap_copula_pfs()}.  Bootstrap marginals
+#' are evaluated at a fixed \code{eval_times} grid via the internal helper
+#' \code{copula_margin_estimation_at()}, guaranteeing every resample returns a
+#' vector of the same length.
+#'
+#' @param lesion_data      Matrix (n x T) of binary lesion indicators.
+#' @param tumour_size_data Matrix (n x (T+1)) including baseline column.
+#' @param time_points      Numeric vector (length T) of real visit times.
+#' @param copula_family    Integer copula family (3=Clayton, 4=Gumbel, 5=Frank).
+#' @param eval_times       Numeric vector of time points at which to evaluate
+#'   the PFS curve. Must be the same vector used to compute \code{true_pfs}.
+#' @param B                Integer. Bootstrap resamples (default 200).
+#' @param alpha_level      Significance level for CI (default 0.05).
+#' @param true_pfs         Numeric vector (length = \code{length(eval_times)})
+#'   of true PFS values for coverage calculation.
+#' @param threshold        Default 1.2.
+#' @param seed             Random seed (default NULL).
+#'
+#' @return A list: \code{boot_curves}, \code{ci_lower}, \code{ci_upper},
+#'   \code{coverage}, \code{mean_coverage}, \code{mean_ci_width}.
+#' @export
+bootstrap_copula_pfs_continuous <- function(lesion_data, tumour_size_data,
+                                            time_points, copula_family,
+                                            eval_times,
+                                            B = 200, alpha_level = 0.05,
+                                            true_pfs,
+                                            threshold = 1.2, seed = NULL) {
+  n_eval <- length(eval_times)
+
+  stopifnot(
+    is.matrix(lesion_data) || is.data.frame(lesion_data),
+    is.matrix(tumour_size_data) || is.data.frame(tumour_size_data),
+    nrow(lesion_data) == nrow(tumour_size_data),
+    length(time_points) == ncol(lesion_data),
+    length(true_pfs) == n_eval,
+    B > 0, alpha_level > 0, alpha_level < 1
+  )
+
+  if (!is.null(seed)) set.seed(seed)
+
+  n <- nrow(lesion_data)
+  T <- length(time_points)   # number of discrete visits
+
+  # --- fit copula ONCE on the full data ---
+  lesion_events_full <- lesion_event(lesion_data)
+  tumour_events_full <- tumour_event(tumour_size_data, threshold = threshold)
+
+  # Map integer indices -> real times
+  lesion_events_full$time <- time_points[pmin(lesion_events_full$time, T)]
+  tumour_events_full$time <- time_points[pmin(tumour_events_full$time, T)]
+
+  U_D        <- pseudo_obs(lesion_events_full)
+  U_Y        <- pseudo_obs(tumour_events_full)
+  copula_fit <- BiCopEst(U_D, U_Y, family = copula_family)
+
+  # --- bootstrap loop ---
+  boot_curves <- matrix(NA_real_, nrow = B, ncol = n_eval)
+
+  for (b in seq_len(B)) {
+
+    idx <- sample(n, n, replace = TRUE)
+
+    pfs_b <- tryCatch({
+
+      le_b <- lesion_event(lesion_data[idx, , drop = FALSE])
+      te_b <- tumour_event(tumour_size_data[idx, , drop = FALSE],
+                           threshold = threshold)
+
+      # Map to real times
+      le_b$time <- time_points[pmin(le_b$time, T)]
+      te_b$time <- time_points[pmin(te_b$time, T)]
+
+      # Evaluate marginals on the FIXED eval_times grid  <-- key fix
+      margins <- copula_margin_estimation_at(le_b, te_b, eval_times)
+      S_D     <- margins$LESION
+      S_Y     <- margins$TUMOUR
+
+      C_uv <- BiCopCDF(1 - S_D, 1 - S_Y, obj = copula_fit)
+      pfs  <- S_D + S_Y - 1 + C_uv
+
+      # Clamp to [0, 1] to handle numerical edge cases
+      pmin(pmax(pfs, 0), 1)
+
+    }, error = function(e) {
+      message(sprintf("  Bootstrap iter %d failed: %s", b, conditionMessage(e)))
+      NULL
+    })
+
+    if (!is.null(pfs_b) && length(pfs_b) == n_eval)
+      boot_curves[b, ] <- pfs_b
+  }
+
+  boot_curves <- boot_curves[complete.cases(boot_curves), , drop = FALSE]
+  n_valid <- nrow(boot_curves)
+  if (n_valid == 0)  stop("All bootstrap iterations failed — check your inputs.")
+  if (n_valid < B)
+    warning(sprintf("%d of %d bootstrap iterations failed.", B - n_valid, B))
+
+  z          <- qnorm(1 - alpha_level / 2)
+  boot_means <- colMeans(boot_curves)
+  boot_sds   <- apply(boot_curves, 2, sd)
+  ci_lower   <- pmax(boot_means - z * boot_sds, 0)
+  ci_upper   <- pmin(boot_means + z * boot_sds, 1)
+  coverage   <- as.integer(true_pfs >= ci_lower & true_pfs <= ci_upper)
+
+  list(
+    boot_curves   = boot_curves,
+    ci_lower      = ci_lower,
+    ci_upper      = ci_upper,
+    coverage      = coverage,
+    mean_coverage = mean(coverage),
+    mean_ci_width = mean(ci_upper - ci_lower)
+  )
+}
+
+
+# -----------------------------------------------------------------------------
+# 5. run_copula_iterations_continuous  (fixed)
+# -----------------------------------------------------------------------------
+#' Outer simulation loop — copula method, continuous time
+#'
+#' Replaces \code{run_copula_iterations()}.
+#'
+#' @param n_times       Integer.
+#' @param n_patients    Integer.
+#' @param n_iterations  Integer.
+#' @param mean          Numeric vector.
+#' @param covariance    Numeric matrix.
+#' @param alpha         Scalar.
+#' @param beta          Scalar.
+#' @param gamma         Scalar.
+#' @param R             Scalar or vector.
+#' @param time_points   Numeric vector (length \code{n_times}) of real visit times.
+#' @param copula_family Integer copula family code.
+#' @param n_eval        Number of evaluation points on the continuous grid (default 50).
+#' @param B             Bootstrap resamples per iteration (default 200).
+#' @param threshold     Default 1.2.
+#'
+#' @return A data frame with columns \code{Time}, \code{Rate}, \code{CI_Width},
+#'   \code{Coverage}.
+#'
+#' @details Call \code{future::plan(multisession)} before this function
+#'   to enable parallel execution.
+#' @importFrom future.apply future_lapply
+#' @export
+run_copula_iterations_continuous <- function(n_times, n_patients,
+                                             n_iterations, mean, covariance,
+                                             alpha, beta, gamma, R,
+                                             time_points, copula_family,
+                                             n_eval = 50, B = 200,
+                                             threshold = 1.2) {
+
+  # Fixed evaluation grid — every function uses this same vector
+  max_t      <- max(time_points)
+  eval_times <- seq(max_t / n_eval, max_t, length.out = n_eval)
+
+  # True rates at that grid
+  true_km   <- get_true_rates_continuous(
+    n_times     = n_times,
+    mean        = mean,
+    covariance  = covariance,
+    alpha       = alpha,
+    beta        = beta,
+    gamma       = gamma,
+    R           = R,
+    time_points = time_points,
+    eval_times  = eval_times,
+    threshold   = threshold
+  )
+  true_rate <- true_km$surv
+
+  results <- future_lapply(seq_len(n_iterations), function(i) {
+
+    tryCatch({
+      coeffs <- generate_coefficients(n_times, n_patients, alpha, beta, gamma, R)
+      cont   <- generate_continuous_data(n_times, n_patients, mean, covariance)
+      Z      <- recover_tumour_sizes(cont$baseline_tumour_size,
+                                     cont$log_tumour_size_ratio)
+      p      <- compute_new_lesion_probability(coeffs, Z[, 1:n_times, drop = FALSE])
+      L      <- generate_binary_data(p)
+
+      res <- bootstrap_copula_pfs_continuous(
+        lesion_data      = L,
+        tumour_size_data = Z,
+        time_points      = time_points,
+        copula_family    = copula_family,
+        eval_times       = eval_times,   # fixed grid passed explicitly
+        B                = B,
+        alpha_level      = 0.05,
+        true_pfs         = true_rate,
+        threshold        = threshold,
+        seed             = NULL
+      )
+
+      list(
+        surv     = colMeans(res$boot_curves),
+        ci_lower = res$ci_lower,
+        ci_upper = res$ci_upper
+      )
+
+    }, error = function(e) {
+      message(sprintf("Iteration %d failed: %s", i, conditionMessage(e)))
+      NULL
+    })
+
+  }, future.seed = TRUE)
+
+  results <- Filter(Negate(is.null), results)
+
+  # Explicit check with a helpful message instead of cryptic dims error
+  if (length(results) == 0)
+    stop("All iterations failed. Run with future::plan(sequential) and B=5 ",
+         "to see the per-iteration error messages.")
+
+  surv_matrix  <- do.call(rbind, lapply(results, `[[`, "surv"))
+  lower_matrix <- do.call(rbind, lapply(results, `[[`, "ci_lower"))
+  upper_matrix <- do.call(rbind, lapply(results, `[[`, "ci_upper"))
+
+  covered <- sweep(lower_matrix, 2, true_rate, "<=") &
+    sweep(upper_matrix, 2, true_rate, ">=")
+
+  data.frame(
+    Time     = round(eval_times, 3),
+    Rate     = round(colMeans(surv_matrix),                 3),
+    CI_Width = round(colMeans(upper_matrix - lower_matrix), 3),
+    Coverage = round(colMeans(covered),                     3)
+  )
+}
+
+
+# -----------------------------------------------------------------------------
+# 6. run_iterations_continuous  (KM side)
+# -----------------------------------------------------------------------------
+#' Outer simulation loop — Kaplan-Meier method, continuous time
+#'
+#' Replaces \code{run_iterations()}. Evaluates KM at the same continuous grid
+#' as \code{run_copula_iterations_continuous()} for a fair comparison.
+#'
+#' @param n_times      Integer.
+#' @param n_patients   Integer.
+#' @param n_iterations Integer.
+#' @param mean         Numeric vector.
+#' @param covariance   Numeric matrix.
+#' @param alpha        Scalar.
+#' @param beta         Scalar.
+#' @param gamma        Scalar.
+#' @param R            Scalar or vector.
+#' @param time_points  Numeric vector (length \code{n_times}) of real visit times.
+#' @param n_eval       Number of equally spaced evaluation points (default 50).
+#' @param threshold    Default 1.2.
+#'
+#' @return A data frame with columns \code{Time}, \code{Rate}, \code{CI_Width},
+#'   \code{Coverage}.
+#' @export
+run_iterations_continuous <- function(n_times, n_patients, n_iterations,
+                                      mean, covariance, alpha, beta, gamma,
+                                      R, time_points, n_eval = 50,
+                                      threshold = 1.2) {
+  max_t      <- max(time_points)
+  eval_times <- seq(max_t / n_eval, max_t, length.out = n_eval)
+
+  true_km   <- get_true_rates_continuous(
+    n_times     = n_times,
+    mean        = mean,
+    covariance  = covariance,
+    alpha       = alpha,
+    beta        = beta,
+    gamma       = gamma,
+    R           = R,
+    time_points = time_points,
+    eval_times  = eval_times,
+    threshold   = threshold
+  )
+  true_rate <- true_km$surv
+
+  surv_matrix  <- matrix(NA, nrow = n_iterations, ncol = n_eval)
+  lower_matrix <- matrix(NA, nrow = n_iterations, ncol = n_eval)
+  upper_matrix <- matrix(NA, nrow = n_iterations, ncol = n_eval)
+
+  for (i in seq_len(n_iterations)) {
+    fit_summary <- run_single_simulation_continuous(
+      n_times     = n_times,
+      n_patients  = n_patients,
+      mean        = mean,
+      covariance  = covariance,
+      alpha       = alpha,
+      beta        = beta,
+      gamma       = gamma,
+      R           = R,
+      time_points = time_points,
+      eval_times  = eval_times,
+      threshold   = threshold
+    )
+    surv_matrix[i, ]  <- fit_summary$surv
+    lower_matrix[i, ] <- fit_summary$lower
+    upper_matrix[i, ] <- fit_summary$upper
+  }
+
+  covered <- sweep(lower_matrix, 2, true_rate, "<=") &
+    sweep(upper_matrix, 2, true_rate, ">=")
+
+  data.frame(
+    Time     = round(eval_times, 3),
+    Rate     = round(colMeans(surv_matrix),                 3),
+    CI_Width = round(colMeans(upper_matrix - lower_matrix), 3),
+    Coverage = round(colMeans(covered),                     3)
+  )
+}
