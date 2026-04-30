@@ -305,9 +305,12 @@ copula_pfs <- function(lesion_events, tumour_events, n_times, copula_family) {
 #' @importFrom stats sd qnorm quantile complete.cases
 #' @export
 bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
-                                 copula_family, B = 100,
+                                 copula_family, B = 200,
                                  alpha_level = 0.05, true_pfs,
-                                 threshold = 1.2, seed = NULL) {
+                                 threshold = 1.2, seed = NULL,
+                                 ci_method = c("percentile", "normal")) {
+
+  ci_method <- match.arg(ci_method)
 
   stopifnot(
     is.matrix(lesion_data) || is.data.frame(lesion_data),
@@ -320,35 +323,30 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
   if (!is.null(seed)) set.seed(seed)
 
   n <- nrow(lesion_data)
-
-  # --- Fit copula ONCE on the full observed data ---
-  lesion_events_full <- lesion_event(lesion_data)
-  tumour_events_full <- tumour_event(tumour_size_data, threshold = threshold)
-
-  U_D <- pseudo_obs(lesion_events_full)
-  U_Y <- pseudo_obs(tumour_events_full)
-
-  # Use BiCopEst (estimation only) instead of BiCopSelect (selection + estimation)
-  copula_fit <- BiCopEst(U_D, U_Y, family = copula_family)
-
-  # --- Bootstrap loop: only re-estimate the marginals ---
   boot_curves <- matrix(NA_real_, nrow = B, ncol = n_times)
 
   for (b in seq_len(B)) {
     idx <- sample(n, n, replace = TRUE)
 
     pfs_b <- tryCatch({
-      lesion_events_b <- lesion_event(lesion_data[idx, , drop = FALSE])
-      tumour_events_b <- tumour_event(tumour_size_data[idx, , drop = FALSE],
-                                      threshold = threshold)
+      lesion_b <- lesion_data[idx, , drop = FALSE]
+      tumour_b <- tumour_size_data[idx, , drop = FALSE]
 
-      # Re-estimate marginal KM curves on the resample
+      lesion_events_b <- lesion_event(lesion_b)
+      tumour_events_b <- tumour_event(tumour_b, threshold = threshold)
+
+      ## (1) Refit theta on this resample (the change vs original).
+      U_D <- pseudo_obs(lesion_events_b)
+      U_Y <- pseudo_obs(tumour_events_b)
+      cop_b <- BiCopEst(U_D, U_Y, family = copula_family)
+
+      ## (2) Re-estimate marginal KM curves on the resample.
       margins <- copula_margin_estimation(lesion_events_b, tumour_events_b, n_times)
       S_D <- margins$LESION
       S_Y <- margins$TUMOUR
 
-      # Apply the fixed copula parameter
-      C_uv <- BiCopCDF(1 - S_D, 1 - S_Y, obj = copula_fit)
+      ## (3) Apply survival-copula identity.
+      C_uv <- BiCopCDF(1 - S_D, 1 - S_Y, obj = cop_b)
       S_D + S_Y - 1 + C_uv
 
     }, error = function(e) NULL)
@@ -356,24 +354,41 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
     if (!is.null(pfs_b)) boot_curves[b, ] <- pfs_b
   }
 
-  boot_curves <- boot_curves[complete.cases(boot_curves), , drop = FALSE]
+  boot_curves <- boot_curves[stats::complete.cases(boot_curves), , drop = FALSE]
   n_valid <- nrow(boot_curves)
   if (n_valid == 0) stop("All bootstrap iterations failed.")
-  if (n_valid < B)  warning(sprintf("%d of %d iterations failed.", B - n_valid, B))
+  if (n_valid < B)
+    warning(sprintf("%d of %d bootstrap iterations failed.", B - n_valid, B))
 
-  # --- Normal-based CI using bootstrap SD ---
-  z <- qnorm(1 - alpha_level / 2)
+  ## --- CI construction ----------------------------------------------------
+  if (ci_method == "percentile") {
+    ## Standard percentile bootstrap CI (preferred -- captures theta variability).
+    qs <- apply(boot_curves, 2, stats::quantile,
+                probs = c(alpha_level / 2, 1 - alpha_level / 2),
+                names = FALSE)
+    ci_lower <- qs[1, ]
+    ci_upper <- qs[2, ]
+  } else {
+    ## Old normal-approx behaviour, kept for diagnostic comparison.
+    z <- stats::qnorm(1 - alpha_level / 2)
+    boot_means <- colMeans(boot_curves)
+    boot_sds   <- apply(boot_curves, 2, stats::sd)
+    ci_lower   <- boot_means - z * boot_sds
+    ci_upper   <- boot_means + z * boot_sds
+  }
 
-  boot_means <- colMeans(boot_curves)
-  boot_sds   <- apply(boot_curves, 2, sd)
+  ## Clip to [0,1] so a CI never falls outside a valid survival probability.
+  ci_lower <- pmax(ci_lower, 0)
+  ci_upper <- pmin(ci_upper, 1)
 
-  ci_lower <- boot_means - z * boot_sds
-  ci_upper <- boot_means + z * boot_sds
   coverage <- as.integer(true_pfs >= ci_lower & true_pfs <= ci_upper)
 
-  return(list(boot_curves = boot_curves, ci_lower = ci_lower, ci_upper = ci_upper,
-       coverage = coverage, mean_coverage = mean(coverage),
-       mean_ci_width = mean(ci_upper - ci_lower)))
+  list(boot_curves   = boot_curves,
+       ci_lower      = ci_lower,
+       ci_upper      = ci_upper,
+       coverage      = coverage,
+       mean_coverage = mean(coverage),
+       mean_ci_width = mean(ci_upper - ci_lower))
 }
 
 #' Run bootstrap copula PFS estimation for n iterations
