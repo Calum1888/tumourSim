@@ -308,7 +308,8 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
                                  copula_family, B = 200,
                                  alpha_level = 0.05, true_pfs,
                                  threshold = 1.2, seed = NULL,
-                                 ci_method = c("percentile", "normal")) {
+                                 ci_method = c("percentile", "normal"),
+                                 jitter_h = 0.5) {
 
   ci_method <- match.arg(ci_method)
 
@@ -317,7 +318,8 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
     is.matrix(tumour_size_data) || is.data.frame(tumour_size_data),
     nrow(lesion_data) == nrow(tumour_size_data),
     length(true_pfs) == n_times,
-    B > 0, alpha_level > 0, alpha_level < 1
+    B > 0, alpha_level > 0, alpha_level < 1,
+    jitter_h >= 0
   )
 
   if (!is.null(seed)) set.seed(seed)
@@ -335,19 +337,22 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
       lesion_events_b <- lesion_event(lesion_b)
       tumour_events_b <- tumour_event(tumour_b, threshold = threshold)
 
-      ## (1) Refit theta on this resample (the change vs original).
+      ## Refit theta on this resample.
       U_D <- pseudo_obs(lesion_events_b)
       U_Y <- pseudo_obs(tumour_events_b)
       cop_b <- BiCopEst(U_D, U_Y, family = copula_family)
 
-      ## (2) Re-estimate marginal KM curves on the resample.
-      margins <- copula_margin_estimation(lesion_events_b, tumour_events_b, n_times)
-      S_D <- margins$LESION
-      S_Y <- margins$TUMOUR
+      ## Smoothed marginal KM curves at the OUTPUT grid (integers 1..n_times).
+      S_D <- .km_at_grid(lesion_events_b, n_times, jitter_h)
+      S_Y <- .km_at_grid(tumour_events_b, n_times, jitter_h)
 
-      ## (3) Apply survival-copula identity.
+      ## Survival-copula identity.
       C_uv <- BiCopCDF(1 - S_D, 1 - S_Y, obj = cop_b)
-      S_D + S_Y - 1 + C_uv
+      pfs <- S_D + S_Y - 1 + C_uv
+      ## Numeric guard: clip into a valid survival range and enforce monotonicity.
+      pfs <- pmin(pmax(pfs, 0), 1)
+      pfs <- cummin(pfs)
+      pfs
 
     }, error = function(e) NULL)
 
@@ -360,16 +365,14 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
   if (n_valid < B)
     warning(sprintf("%d of %d bootstrap iterations failed.", B - n_valid, B))
 
-  ## --- CI construction ----------------------------------------------------
+  ## --- CI construction ---------------------------------------------------
   if (ci_method == "percentile") {
-    ## Standard percentile bootstrap CI (preferred -- captures theta variability).
     qs <- apply(boot_curves, 2, stats::quantile,
                 probs = c(alpha_level / 2, 1 - alpha_level / 2),
                 names = FALSE)
     ci_lower <- qs[1, ]
     ci_upper <- qs[2, ]
   } else {
-    ## Old normal-approx behaviour, kept for diagnostic comparison.
     z <- stats::qnorm(1 - alpha_level / 2)
     boot_means <- colMeans(boot_curves)
     boot_sds   <- apply(boot_curves, 2, stats::sd)
@@ -377,7 +380,6 @@ bootstrap_copula_pfs <- function(lesion_data, tumour_size_data, n_times,
     ci_upper   <- boot_means + z * boot_sds
   }
 
-  ## Clip to [0,1] so a CI never falls outside a valid survival probability.
   ci_lower <- pmax(ci_lower, 0)
   ci_upper <- pmin(ci_upper, 1)
 
@@ -483,63 +485,31 @@ run_copula_iterations <- function(n_times, n_patients, n_iterations, mean, covar
 
 #' Estimate marginal survival curves at continuous time points
 #'
-#' A continuous-time replacement for \code{copula_margin_estimation()}.
-#' Rather than evaluating Kaplan–Meier curves at integer indices
-#' \code{1:n_times}, this function evaluates them at \code{n_times} equally
-#' spaced time points spanning the observed follow-up range. This avoids the
-#' distortion introduced by rescaling continuous event times to integer bins.
+#' Patched version: accepts an optional pre-specified `times` grid. When supplied,
+#' marginal KM curves are evaluated on that exact grid rather than on a
+#' grid derived from the data's max follow-up time. This is needed when
+#' comparing PFS curves across groups (treatment arms, permutation resamples)
+#' that may have different observed follow-up ranges.
 #'
-#' @param lesion_events A data frame with columns \code{time} and
-#'   \code{status}, typically produced by \code{lesion_event()} or derived
-#'   from subject-level lesion data.
-#' @param tumour_events A data frame with columns \code{time} and
-#'   \code{status}, typically produced by \code{tumour_event()} or derived
-#'   from subject-level tumour progression data.
-#' @param n_times Integer. Number of equally spaced time points at which to
-#'   evaluate the marginal survival curves. Points run from
-#'   \code{max_t / n_times} to \code{max_t}, where \code{max_t} is the
-#'   maximum observed time across both endpoints.
+#' @param lesion_events,tumour_events Data frames with columns `time` and `status`.
+#' @param n_times Integer. Used only when `times` is NULL.
+#' @param times Optional numeric vector of evaluation time points. If supplied,
+#'   `n_times` is ignored.
 #'
-#' @return A data frame with three columns:
-#'   \describe{
-#'     \item{time}{Numeric vector of length \code{n_times} giving the
-#'       evaluation time points in the original time scale.}
-#'     \item{LESION}{Kaplan–Meier survival probability for lesion
-#'       progression at each evaluation time.}
-#'     \item{TUMOUR}{Kaplan–Meier survival probability for tumour
-#'       progression at each evaluation time.}
-#'   }
-#'
-#' @details
-#' Two independent Kaplan–Meier curves are fitted — one for lesion
-#' progression and one for tumour progression — and evaluated at
-#' \code{n_times} equally spaced points across the observed follow-up
-#' window. The \code{extend = TRUE} argument to \code{summary.survfit}
-#' ensures that survival probabilities are carried forward beyond the last
-#' observed event, avoiding \code{NA} values at late time points. These
-#' marginal estimates feed directly into \code{copula_pfs_continuous()} for
-#' copula-based PFS reconstruction.
-#'
-#' @seealso \code{\link{copula_margin_estimation}} for the discrete-time
-#'   equivalent, \code{\link{copula_pfs_continuous}} for the PFS estimation
-#'   function that calls this.
-#'
-#' @examples
-#' \dontrun{
-#' lesion_events <- data.frame(time = c(0.5, 1.2, 2.0), status = c(1, 0, 1))
-#' tumour_events <- data.frame(time = c(0.8, 1.5, 1.9), status = c(1, 1, 0))
-#' copula_margin_estimation_continuous(lesion_events, tumour_events, n_times = 10)
-#' }
-#'
-#' @importFrom survival survfit Surv
-#' @export
-copula_margin_estimation_continuous <- function(lesion_events, tumour_events, n_times) {
+#' @return Data frame with columns `time`, `LESION`, `TUMOUR`.
+copula_margin_estimation_continuous <- function(lesion_events, tumour_events,
+                                                n_times = NULL, times = NULL) {
+
+  if (is.null(times) && is.null(n_times))
+    stop("Provide either `times` or `n_times`.")
 
   fit_lesion <- survfit(Surv(time, status) ~ 1, data = lesion_events)
   fit_tumour <- survfit(Surv(time, status) ~ 1, data = tumour_events)
 
-  max_t <- max(lesion_events$time, tumour_events$time, na.rm = TRUE)
-  times <- seq(max_t / n_times, max_t, length.out = n_times)
+  if (is.null(times)) {
+    max_t <- max(lesion_events$time, tumour_events$time, na.rm = TRUE)
+    times <- seq(max_t / n_times, max_t, length.out = n_times)
+  }
 
   data.frame(
     time   = times,
@@ -551,96 +521,58 @@ copula_margin_estimation_continuous <- function(lesion_events, tumour_events, n_
 
 #' Estimate progression-free survival using a copula model on continuous time
 #'
-#' A continuous-time replacement for \code{copula_pfs()}. Computes a
-#' copula-based estimate of the progression-free survival (PFS) curve by
-#' combining marginal Kaplan–Meier survival functions evaluated at equally
-#' spaced continuous time points with a dependence structure estimated from
-#' pseudo-observations. Unlike \code{copula_pfs()}, no rescaling of event
-#' times to integer indices is required.
+#' Patched version: accepts an optional pre-specified `times` grid that is
+#' passed through to `copula_margin_estimation_continuous()`. Use this when
+#' multiple PFS curves need to be evaluated on a common grid.
 #'
-#' @param lesion_events A data frame with columns \code{time} and
-#'   \code{status}, typically produced by \code{lesion_event()} or derived
-#'   from subject-level lesion data.
-#' @param tumour_events A data frame with columns \code{time} and
-#'   \code{status}, typically produced by \code{tumour_event()} or derived
-#'   from subject-level tumour progression data.
-#' @param n_times Integer. Number of equally spaced time points at which to
-#'   evaluate the PFS curve. Passed to
-#'   \code{copula_margin_estimation_continuous()}.
-#' @param copula_family Integer specifying the bivariate copula family to
-#'   fit via \code{VineCopula::BiCopEst()}. Common choices:
-#'   \itemize{
-#'     \item 1 — Gaussian
-#'     \item 2 — Student-t
-#'     \item 3 — Clayton
-#'     \item 4 — Gumbel
-#'     \item 5 — Frank
-#'   }
+#' @param lesion_events,tumour_events Data frames with columns `time` and `status`.
+#' @param n_times Integer. Used only when `times` is NULL.
+#' @param copula_family Integer specifying the bivariate copula family.
+#' @param times Optional numeric vector of evaluation time points.
 #'
-#' @return A list with three elements:
-#'   \describe{
-#'     \item{time}{Numeric vector of length \code{n_times} giving the
-#'       evaluation time points in the original time scale.}
-#'     \item{PFS}{Numeric vector of length \code{n_times} giving the
-#'       copula-based PFS estimate at each time point.}
-#'     \item{copula_fit}{A \code{BiCop} object returned by
-#'       \code{VineCopula::BiCopEst()}, containing the fitted copula family,
-#'       dependence parameter(s), log-likelihood, and AIC/BIC.}
-#'   }
-#'
-#' @details
-#' The method proceeds in three steps:
-#' \enumerate{
-#'   \item Pseudo-observations are computed from the marginal event times
-#'         using Kaplan–Meier CDFs via \code{pseudo_obs()}.
-#'   \item A bivariate copula of the specified family is fitted to the
-#'         pseudo-observations via \code{VineCopula::BiCopEst()} to estimate
-#'         the dependence parameter \eqn{\theta}.
-#'   \item The PFS curve is reconstructed at \code{n_times} equally spaced
-#'         continuous time points using the survival-copula identity:
-#'         \deqn{
-#'           S_{\mathrm{PFS}}(t)
-#'           = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t),\, 1 - S_Y(t);\, \theta),
-#'         }
-#'         where \eqn{S_D} and \eqn{S_Y} are the marginal Kaplan–Meier
-#'         survival functions and \eqn{C} is the fitted copula CDF.
-#' }
-#'
-#' The returned \code{copula_fit} object can be inspected to assess
-#' goodness-of-fit (AIC, BIC, log-likelihood) and to compare dependence
-#' structures across copula families or treatment arms.
-#'
-#' @seealso \code{\link{copula_pfs}} for the discrete-time equivalent,
-#'   \code{\link{copula_margin_estimation_continuous}} for the marginal
-#'   estimation step, \code{\link{pseudo_obs}} for pseudo-observation
-#'   computation.
-#'
-#' @examples
-#' \dontrun{
-#' lesion_events <- data.frame(time = c(0.5, 1.2, 2.0), status = c(1, 0, 1))
-#' tumour_events <- data.frame(time = c(0.8, 1.5, 1.9), status = c(1, 1, 0))
-#' result <- copula_pfs_continuous(lesion_events, tumour_events,
-#'                                 n_times = 50, copula_family = 5)
-#' plot(result$time, result$PFS, type = "l")
-#' print(result$copula_fit)
-#' }
-#'
-#' @importFrom VineCopula BiCopEst BiCopCDF
-#' @export
-copula_pfs_continuous <- function(lesion_events, tumour_events, n_times, copula_family) {
+#' @return List with `time`, `PFS`, `copula_fit`.
+copula_pfs_continuous <- function(lesion_events, tumour_events,
+                                  n_times = NULL, copula_family,
+                                  times = NULL) {
 
   U_D <- pseudo_obs(lesion_events)
   U_Y <- pseudo_obs(tumour_events)
 
   copula_fit <- BiCopEst(U_D, U_Y, family = copula_family)
 
-  margins <- copula_margin_estimation_continuous(lesion_events, tumour_events, n_times)
+  margins <- copula_margin_estimation_continuous(
+    lesion_events, tumour_events,
+    n_times = n_times, times = times
+  )
   S_D     <- margins$LESION
   S_Y     <- margins$TUMOUR
-  times   <- margins$time
+  out_t   <- margins$time
 
   C_uv  <- BiCopCDF(1 - S_D, 1 - S_Y, obj = copula_fit)
   S_pfs <- S_D + S_Y - 1 + C_uv
 
-  list(time = times, PFS = S_pfs, copula_fit = copula_fit)
+  list(time = out_t, PFS = S_pfs, copula_fit = copula_fit)
 }
+#####################################
+
+pseudo_obs <- function(events) {
+  n   <- nrow(events)
+  fit <- survfit(Surv(time, status) ~ 1, data = events)
+  S_at <- summary(fit, times = events$time, extend = TRUE)$surv
+  U    <- 1 - S_at
+  jitter_amt <- 1 / (10 * n)
+  U <- U + runif(n, -jitter_amt, jitter_amt)
+  eps <- 1e-6
+  pmin(pmax(U, eps), 1 - eps)
+}
+
+.km_at_grid <- function(events, n_times, jitter_h = 0.5) {
+  if (jitter_h > 0) {
+    events$time <- events$time + runif(nrow(events), -jitter_h, jitter_h)
+    ## ensure event times stay strictly positive
+    events$time <- pmax(events$time, 1e-6)
+  }
+  fit <- survfit(Surv(time, status) ~ 1, data = events)
+  summary(fit, times = seq_len(n_times), extend = TRUE)$surv
+}
+
