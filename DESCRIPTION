@@ -10,7 +10,7 @@ Authors@R: c(
     )
   )
 Description: Simulation framework for log tumour size ratios and lesion probabilities. 
-    The true survival rates, Kaplan-Meier estimated survival rates and Copula estimated survival rates and metrics are calculated.
+    The true survival rates, Kaplan-Meier Augbin and Copula estimated survival rates and metrics are calculated.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -22,9 +22,8 @@ Imports:
   VineCopula,
   ggplot2,
   patchwork,
-  scales,
-  rlang,
-  future.apply
-Suggests: 
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
+  copula,
+  dplyr,
+  mvtnorm,
+  pbapply
+
