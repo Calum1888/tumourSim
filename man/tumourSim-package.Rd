@@ -6,7 +6,7 @@
 \alias{tumourSim-package}
 \title{tumourSim: Simulation Tools for Tumour Progression Models}
 \description{
-Simulation framework for log tumour size ratios and lesion probabilities. The true survival rates, Kaplan-Meier estimated survival rates and Copula estimated survival rates and metrics are calculated.
+Simulation framework for log tumour size ratios and lesion probabilities. The true survival rates, Kaplan-Meier Augbin and Copula estimated survival rates and metrics are calculated.
 }
 \author{
 \strong{Maintainer}: Calum Regan \email{c_regan1888@outlook.com}
