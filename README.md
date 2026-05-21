@@ -1,191 +1,177 @@
-# Copula-Based Progression-Free Survival Estimation
+# Copula Modelling for Mixed Continuous and Binary Variables in Survival Analysis
 
-An R package implementing a copula-based approach to estimate progression-free survival (PFS) by jointly modelling tumour progression and new lesion appearance, following the RECIST framework.
+### Applications to Colorectal Cancer Clinical Trials
 
-------------------------------------------------------------------------
-
-## Background
-
-In oncology trials, progression-free survival is defined as the time to the first of two competing events:
-
--   **Tumour progression** — tumour size exceeds 20% of the subject's rolling minimum (RECIST 1.1 criterion)
--   **New lesion appearance** — a binary indicator switches from 0 to 1
-
-Traditional Kaplan–Meier methods treat PFS as a single combined endpoint. This package instead models the two endpoints separately with marginal Kaplan–Meier estimators and then reconstructs the joint PFS curve via the **survival-copula identity**:
-
-$$S_{\text{PFS}}(t) = S_D(t) + S_Y(t) - 1 + C(1 - S_D(t),\, 1 - S_Y(t);\, \hat{\theta})$$
-
-where $C$ is a bivariate copula fitted to pseudo-observations derived from the marginal event times.
+> A novel statistical framework that improves survival prediction in oncology trials by modelling the *dependence* between tumour growth and the appearance of new lesions — going beyond what Kaplan–Meier and augmented-binary methods can offer.
 
 ------------------------------------------------------------------------
 
-## Installation
+## Overview
+
+Clinical trials in oncology typically produce two distinct types of progression signals for each patient:
+
+1.  **A continuous measurement** — the sum of the longest tumour diameters (SLD), tracked longitudinally.
+2.  **A binary indicator** — whether a new lesion has appeared at a follow-up visit.
+
+Under the **RECIST** framework, *either* of these crossing a threshold counts as a progression event. Standard methods (Kaplan–Meier, augmented-binary) treat the composite endpoint marginally and **discard the joint structure** between these two signals.
+
+This project develops and evaluates a **copula-based joint survival model** that explicitly captures the dependence between the two endpoints, yielding:
+
+-   More precise survival estimates than Kaplan–Meier in dependent-event settings
+-   Increased statistical power to detect treatment effects when tumour growth and new lesions are linked
+-   Interpretable measures of clinical dependence (Kendall's τ, tail dependence) inaccessible to traditional methods
+-   Robustness to non-Gaussian tumour dynamics where the augmented-binary method breaks down
+
+The framework is validated on a comprehensive simulation study and applied to the **Phase III PRIME colorectal cancer trial** (Amgen, n = 442 patients with full longitudinal data).
+
+------------------------------------------------------------------------
+
+## Key Results
+
+### Headline finding on real trial data
+
+In a stratified analysis of the PRIME colorectal cancer trial, the copula-based permutation test detected a **statistically significant late divergence** between FOLFOX alone and Panitumumab + FOLFOX in the KRAS-Mutant subgroup (**p = 0.008**), where the standard log-rank test found no difference (p = 0.879). This reflects the copula method's sensitivity to non-proportional hazards, which the log-rank test under-weights at late follow-up times.
+
+### Simulation study highlights
+
+| Scenario | Kaplan–Meier | Augmented-Binary | **Copula (Gumbel)** |
+|-----------------|:-----------------:|:-----------------:|:-----------------:|
+| Type I error (null) | 0.040 | 0.045 | **0.045** ✓ |
+| Heavy-tail null | 0.055 | **0.174** ✗ inflated | **0.046** ✓ |
+| Small treatment effect | 0.371 | 0.405 | **0.395** |
+| Dependent endpoints + small effect | 0.974 | 0.990 | **0.993** ✓ best |
+| Dependent endpoints + medium effect | 0.996 | 0.999 | **0.998** |
+
+The copula approach **controls Type I error under heavy-tailed tumour dynamics**, where the augmented-binary method fails (inflated to 17.4%), while delivering competitive or superior power when endpoints are genuinely dependent.
+
+### Survival curve estimation (single-arm trial, 7 time points)
+
+<p align="center">
+
+<img src="KM_GRAPH_7.png" alt="Kaplan-Meier" width="32%"/> <img src="AUGBIN_GRAPH_7.png" alt="Augmented-Binary" width="32%"/> <img src="COPULA_GRAPH_7.png" alt="Gumbel Copula" width="32%"/>
+
+</p>
+
+The Gumbel copula consistently achieves **narrower confidence intervals than Kaplan–Meier** while maintaining ≥95% coverage across all time points.
+
+------------------------------------------------------------------------
+
+## Real-Data Application: PRIME Colorectal Cancer Trial
+
+<p align="center">
+
+<img src="km_trt_by_KRAS.png" alt="Kaplan-Meier by KRAS type" width="48%"/> <img src="cop_trt_strat_by_KRAS.png" alt="Copula by KRAS type" width="48%"/>
+
+</p>
+
+*Left: Kaplan–Meier estimates by treatment, stratified by KRAS type. Right: Gumbel copula estimates of the same. The copula method reveals a sustained late survival advantage for Panitumumab + FOLFOX in the KRAS-Mutant subgroup between years 1 and 2 — a signal the log-rank test misses because of how it weights time points.*
+
+The model also produces **clinically interpretable dependence measures**: - Kendall's τ = 0.256 (FOLFOX alone) vs τ = 0.307 (Panitumumab + FOLFOX) — patients in the combination arm show stronger co-occurrence of tumour growth and new lesion events. - Lower-tail dependence (survival-time scale) → patients who progress early tend to do so on *both* endpoints simultaneously, consistent with shared underlying disease biology.
+
+------------------------------------------------------------------------
+
+## Methodology
+
+### The copula-based survival estimator
+
+For lesion failure time $T_D$ and tumour-progression time $T_Y$, the progression-free survival function is reconstructed via a **survival copula**:
+
+$$
+\widehat{S}_{\text{PFS}}(t) = \widehat{S}_D(t) + \widehat{S}_Y(t) - 1 + C\big(1 - \widehat{S}_D(t),\, 1 - \widehat{S}_Y(t);\, \widehat{\theta}\big)
+$$
+
+where: - $\widehat{S}_D$ and $\widehat{S}_Y$ are Kaplan–Meier estimates of the marginal survival functions - $C(\cdot, \cdot; \theta)$ is an Archimedean copula (Clayton, Frank, or Gumbel) capturing the dependence - $\widehat{\theta}$ is estimated by maximum likelihood on the bivariate pseudo-observations
+
+Inference uses **bootstrap resampling** (200 samples × 1000 iterations) for confidence intervals, and a **permutation test** on the integrated $L_1$ distance between arm-specific survival curves for hypothesis testing.
+
+### Why Gumbel?
+
+Across simulation scenarios and the real PRIME data, the Gumbel copula consistently produced the lowest AIC and best-calibrated coverage. Its lower-tail dependence (on the survival-time scale) matches the clinical reality that aggressive disease drives both tumour growth and new-lesion formation together.
+
+------------------------------------------------------------------------
+
+## Repository Structure
+
+```         
+.
+├── DATA_GENERATION.R   # Simulates RECIST-style trial data (single & two-arm)
+├── KM.R                # Kaplan-Meier marginals + log-rank baseline
+├── AUGBIN.R            # Augmented-binary method (Lin & Wason, 2020)
+├── COPULA.R            # Copula fitting, PFS estimator, bootstrap CIs, permutation test
+├── HAZARDS.R           # Cox PH and AFT model helpers (illustrative)
+├── POWER.R             # Power simulations across 10 scenarios
+├── Final_Submission.pdf  # Full dissertation (83 pages)
+└── *.png               # Survival curve plots
+```
+
+The estimation code is also distributed as an R package, **`tumourSim`**, available at\
+👉 [github.com/Calum1888/tumourSim](https://github.com/Calum1888/tumourSim)
+
+------------------------------------------------------------------------
+
+## Technical Stack
+
+-   **Language:** R
+-   **Core packages:** `copula`, `survival`, `mvtnorm`, `boot`, `ggplot2`
+-   **Statistical techniques:**
+    -   Maximum likelihood estimation for Archimedean copulas
+    -   Non-parametric bootstrap for confidence intervals
+    -   Permutation testing for non-proportional hazards
+    -   Two-step estimation framework (Shih & Louis, 1995)
+    -   Delta method for variance approximation
+
+------------------------------------------------------------------------
+
+## Reproducing the Results
 
 ``` r
-# Install dependencies
-install.packages(c("survival", "VineCopula", "MASS", "ggplot2", "rlang", "parallel", "scales", "patchwork"))
-
-# Install from source
+# Install the companion package
 devtools::install_github("Calum1888/tumourSim")
+
+# Or source the scripts directly
+source("DATA_GENERATION.R")
+source("KM.R")
+source("COPULA.R")
+source("POWER.R")
+
+# Run a single-arm simulation
+trial  <- simulate_single_arm(n = 150, n_times = 5)
+result <- pfs_copula(trial, family = "gumbel", n_boot = 200)
+
+# Run a two-arm power study (1000 iterations)
+power_results <- run_power_simulation(scenario = 6, n_sim = 1000)
 ```
 
 ------------------------------------------------------------------------
 
-## Data Generation
+## What I Built and Learned
 
-Two functions simulate clinical trial data under the RECIST model.
+This project was my Master of Mathematics (MMATH) final year project. It involved:
 
-### `generate_continuous_data()`
+-   **Theoretical work:** deriving the survival-copula representation, computing tail dependence and Kendall's τ for Archimedean families, proving convergence of the t-copula to the Gaussian copula as ν → ∞.
+-   **Software engineering:** writing a documented, tested R package (`tumourSim`) implementing data generation, three estimation methods, bootstrap inference, and a permutation test.
+-   **Simulation design:** ten carefully constructed scenarios isolating treatment effect size, tumour–lesion dependence, and distributional assumptions (Gaussian vs heavy-tailed).
+-   **Applied analysis:** end-to-end analysis of a real Phase III oncology trial, including endpoint construction from raw longitudinal data, model selection via AIC, and clinical interpretation of dependence measures.
+-   **Communication:** an 83-page dissertation including a self-contained primer on copula theory, survival analysis, and the proposed methodology.
 
-Simulates log tumour size ratios from a multivariate normal distribution and baseline tumour sizes from Uniform(0, 1).
-
-``` r
-n_times   <- 5
-n_patients <- 150
-
-mu <- c(0, 0.036, 0.072, 0.108, 0.144)
-
-Sigma <- matrix(c(
-  0.25, 0.25, 0.25, 0.25, 0.25,
-  0.25, 0.45, 0.45, 0.45, 0.45,
-  0.25, 0.45, 0.50, 0.50, 0.50,
-  0.25, 0.45, 0.50, 0.75, 0.75,
-  0.25, 0.45, 0.50, 0.75, 1.00
-), nrow = 5)
-
-data <- generate_continuous_data(n_times, n_patients, mean = mu, covariance = Sigma)
-# Returns: $log_tumour_size_ratio [n_patients x n_times matrix]
-#          $baseline_tumour_size  [n_patients vector]
-```
-
-### `generate_coefficients()`
-
-Generates the logistic regression coefficients used to model the probability of a new lesion appearing at each time point.
-
-``` r
-coeffs <- generate_coefficients(
-  n_times    = 5,
-  n_patients = 150,
-  alpha      = -2.5,   # baseline log-odds
-  beta       = 0.5,    # treatment arm effect (set 0 for single-arm)
-  gamma      = 0.3,    # tumour size effect
-  R          = 0       # arm indicator: 0 = control, 1 = treatment
-)
-```
+The work demonstrates that **modelling dependence between competing endpoints is not just theoretically interesting — it provides measurable gains in efficiency and interpretability in real clinical trial data**.
 
 ------------------------------------------------------------------------
 
-## Core Functions
+## References
 
-### `lesion_event()`
+The complete reference list (38 entries) is included in the dissertation. Key methodological foundations:
 
-Derives binary event times from a lesion indicator matrix. Each subject's event time is the first column index where the indicator equals 1; subjects with no event are censored at the final time point.
-
-``` r
-lesion_data <- matrix(c(0, 0, 1,
-                         0, 0, 0), nrow = 2, byrow = TRUE)
-lesion_event(lesion_data)
-#   time status
-# 1    3      1
-# 2    3      0
-```
-
-### `tumour_event()`
-
-Derives progression event times from continuous tumour size measurements using a rolling-minimum threshold rule. An event is recorded when:
-
-$$z_{it} > 1.2 \times \min(z_{i0}, \ldots, z_{i,t-1})$$
-
-``` r
-tumour_event(tumour_size_data, threshold = 1.2)
-```
-
-### `copula_pfs()`
-
-The main estimator. Fits a bivariate copula to pseudo-observations from the marginal KM CDFs, then evaluates the PFS curve at each time point using the survival-copula identity.
-
-``` r
-# Gaussian copula (family = 1)
-pfs <- copula_pfs(
-  lesion_events  = lesion_event(lesion_data),
-  tumour_events  = tumour_event(tumour_size_data),
-  n_times        = 5,
-  copula_family  = 1
-)
-```
-
-Copula family codes follow the `VineCopula` package convention. Passing a vector of families triggers AIC-based selection via `BiCopSelect()`. Recommended families for survival data:
-
-| Family code | Copula   | Tail dependence         |
-|-------------|----------|-------------------------|
-| 1           | Gaussian | None                    |
-| 2           | t        | Upper and lower         |
-| 3           | Clayton  | Lower only              |
-| 4           | Gumbel   | Upper only              |
-| 5           | Frank    | None (symmetric centre) |
-
-### `copula_margin_estimation()`
-
-Returns pointwise Kaplan–Meier survival estimates for each marginal endpoint at times `1:n_times`. Used internally by `copula_pfs()` but exposed for diagnostics.
+-   Sklar, M. (1959). *Fonctions de répartition à n dimensions et leurs marges.*
+-   Kaplan, E.L. & Meier, P. (1958). *Nonparametric Estimation from Incomplete Observations.* JASA.
+-   Lin, C-J. & Wason, J. (2020). *Efficient analysis of time-to-event endpoints when the event involves a continuous variable crossing a threshold.* J. Stat. Plan. Inference.
+-   Nelsen, R.B. (2006). *An Introduction to Copulas.* Springer.
+-   Eisenhauer, E.A. et al. (2009). *New response evaluation criteria in solid tumours: Revised RECIST guideline (v1.1).* Eur. J. Cancer.
 
 ------------------------------------------------------------------------
 
-## Bootstrap Inference
+## Contact
 
-`bootstrap_copula_pfs()` draws `B` subject-level bootstrap resamples and computes pointwise percentile confidence intervals, coverage against a known true PFS curve, and average CI width.
-
-``` r
-
-result <- bootstrap_copula_pfs(
-  lesion_data      = lesion_data,
-  tumour_size_data = tumour_size_data,
-  n_times          = 5,
-  copula_family    = c(1, 3, 4, 5),  # select best-fitting copula
-  B                = 500,
-  alpha            = 0.05,
-  true_pfs         = true_pfs,
-  threshold        = 1.2,
-  seed             = 42
-)
-
-result$ci_lower      # lower CI bound at each time point
-result$ci_upper      # upper CI bound at each time point
-result$coverage      # 0/1 indicator per time point
-result$mean_coverage # proportion of time points where CI contains true value
-result$mean_ci_width # average CI width across time points
-result$boot_curves   # B x n_times matrix of bootstrap PFS curves
-```
-
-Failed bootstrap iterations (e.g. degenerate resamples causing copula fitting to fail) are silently dropped with a warning reporting how many were lost.
-
-------------------------------------------------------------------------
-
-## Power Comparisions
-
-`power_logrank_pfs()` calculates the power of detecting differences between control and treatment arms using the log rank test. This test is used for the Kaplan-Meier estimator. `power_copula_pfs()` calculates the power as well, but uses the bootstrap method to detect the difference between survival curves.
-
-There are 7 different scenarios we wish to test.
-
-| Scenarios | Description |
-|----|----|
-| 1 | No difference between control and treatment arms ($\beta=0.0$) |
-| 2 | Small treatment effect ($\beta=-0.2$) |
-| 3 | Medium treatment effect $\beta=-0.5$) |
-| 4 | Strong treatment effect $\beta=-0.8$) |
-| 5 | Early difference between control and treatment arms for a fixed $\beta=-0.5$ |
-| 6 | Late difference between control and treatment arms for a fixed $\beta=-0.5$ |
-| 7 | Crossing between control and treatment arms for a fixed $\beta=-0.5$ |
-
-## Testing
-
-Tests are written with `testthat`. Run them with:
-
-``` r
-devtools::test()
-```
-
-Slow bootstrap tests are marked `skip_on_cran()` and use a small `B` for speed. Coverage can be checked with:
-
-``` r
-covr::report()
-```
+Author: **Calum Regan**\
+MMATH Mathematics, 2022-2026\
+📄 [Full dissertation (PDF)](Final_Submission.pdf)
