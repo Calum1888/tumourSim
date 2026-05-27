@@ -49,14 +49,14 @@ simulate_one_trial <- function(s, n_per_arm, defaults) {
   l0 <- lesion_events(n_per_arm, t0$log_ratios_vs_baseline,
                       alpha = alpha, beta = beta, gamma = gamma,
                       treatment_arm = 0)
-  ce0 <- combined_event(l0$events, t0$events); ce0$arm <- 0L
+  ce0 <- combined_event(t0$events, l0$events); ce0$arm <- 0L
 
   # Treatment arm
   t1 <- tumour_events(n_per_arm, mean_vec, cov_mat, threshold)
   l1 <- lesion_events(n_per_arm, t1$log_ratios_vs_baseline,
                       alpha = alpha, beta = beta, gamma = gamma,
                       treatment_arm = 1)
-  ce1 <- combined_event(l1$events, t1$events); ce1$arm <- 1L
+  ce1 <- combined_event(t1$events, l1$events); ce1$arm <- 1L
 
   ce0 <- apply_admin_censoring(ce0, cens_at)
   ce1 <- apply_admin_censoring(ce1, cens_at)
@@ -580,7 +580,7 @@ simulate_metrics_all <- function(M = 1000, B = 200, n_patients = 150,
 
     tt <- find_event_time(ts$events)
     ll <- find_event_time(ls$events)
-    ce <- combined_event(ls$events, ts$events)
+    ce <- combined_event(ts$events, ls$events)
 
     kmf  <- survfit(Surv(time, status) ~ 1, data = ce)
     km_s <- summary(kmf, times = grid, extend = TRUE)

@@ -264,7 +264,7 @@ lesion_events <- function(n_patients, log_tumour, alpha, beta, gamma,
 #' les   <- lesion_events(50, tum$log_ratios_vs_baseline,
 #'                        alpha = -2.5, beta = 0, gamma = 0.2,
 #'                        treatment_arm = 0)
-#' pfs <- combined_event(les$events, tum$events)
+#' pfs <- combined_event(tum$events, les$events)
 #' head(pfs)
 #' table(pfs$status)
 #'
@@ -272,8 +272,8 @@ lesion_events <- function(n_patients, log_tumour, alpha, beta, gamma,
 #'   \code{\link{first_event_times}}
 #'
 #' @export
-combined_event <- function(lesion, tumour) {
-  stopifnot(identical(dim(lesion), dim(tumour)))
+combined_event <- function(tumour, lesion) {
+  stopifnot(identical(dim(tumour), dim(lesion)))
   n_visits <- ncol(tumour)
 
   first_visit <- function(row) {
@@ -322,33 +322,14 @@ find_event_time <- function(events) {
 
 #' Convert paired tumour and lesion event matrices to a composite (time, status) table
 #'
-#' Loop-based implementation of \code{\link{combined_event}} that does not
-#' assume both matrices have identical dimensions. Used internally by the
-#' two-arm power simulators where tumour and lesion events arrive as
-#' separate matrices and the composite endpoint is needed alongside the
-#' per-endpoint endpoints.
+#' Internal alias for \code{\link{combined_event}}; retained for backwards
+#' compatibility within the package's internals.
 #'
-#' @param tumour_events_mat Numeric \code{n_patients} x \code{T} matrix of
-#'   tumour event indicators (0/1).
-#' @param lesion_events_mat Numeric \code{n_patients} x \code{T} matrix of
-#'   lesion event indicators (0/1).
-#'
-#' @return A \code{data.frame} with columns \code{time} and \code{status}.
-#'
-#'
-first_event_times <- function(tumour_events_mat, lesion_events_mat) {
-  T_visits <- ncol(tumour_events_mat)
-  n        <- nrow(tumour_events_mat)
-  time   <- integer(n)
-  status <- integer(n)
-  for (i in seq_len(n)) {
-    t_hit <- which(tumour_events_mat[i, ] == 1)
-    l_hit <- which(lesion_events_mat[i, ] == 1)
-    hits <- c(t_hit, l_hit)
-    if (length(hits) == 0) { time[i] <- T_visits; status[i] <- 0 }
-    else                   { time[i] <- min(hits); status[i] <- 1 }
-  }
-  data.frame(time = time, status = status)
+#' @param tumour,lesion Event-indicator matrices of identical dimension.
+#' @return A data frame as in \code{\link{combined_event}}.
+#' @keywords internal
+first_event_times <- function(tumour, lesion) {
+  combined_event(tumour, lesion)
 }
 
 
@@ -406,7 +387,7 @@ separate_event_times <- function(events_mat) {
 #' les   <- lesion_events(50, tum$log_ratios_vs_baseline,
 #'                        alpha = -2.5, beta = 0, gamma = 0.2,
 #'                        treatment_arm = 0)
-#' pfs <- combined_event(les$events, tum$events)
+#' pfs <- combined_event(tum$events, les$events)
 #'
 #' # Censor at visit 3
 #' pfs_short <- apply_admin_censoring(pfs, cens_at = 3)
