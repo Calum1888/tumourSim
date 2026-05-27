@@ -231,45 +231,65 @@ lesion_events <- function(n_patients, log_tumour, alpha, beta, gamma,
 
 #' Combine tumour and lesion events into a composite time-to-event outcome
 #'
-#' Combines two event-indicator matrices (one for tumour progression and one
-#' for new lesions) into a single time-to-first-event outcome per patient,
-#' defined as the earliest visit at which either event occurs. Patients with
-#' no event by the final visit are administratively censored.
+#' Combines two event-indicator matrices into a single time-to-first-event
+#' outcome per patient, defined as the earliest visit at which either a
+#' tumour progression or a new lesion event occurs. This is the standard
+#' RECIST composite progression-free survival (PFS) endpoint. Patients with
+#' no event by the final visit are administratively censored at the last
+#' visit.
 #'
-#' @param lesion_events Numeric \code{n_patients} x \code{T} matrix of lesion
-#'   event indicators (0/1), e.g. the \code{events} component of
-#'   \code{\link{lesion_events}}. \code{NA} values are treated as non-events.
-#' @param tumour_events Numeric \code{n_patients} x \code{T} matrix of tumour
-#'   event indicators (0/1), with the same dimensions as \code{lesion_events}.
+#' @param lesion Numeric \code{n_patients} x \code{T} matrix of lesion event
+#'   indicators (0/1), typically the \code{events} component returned by
+#'   \code{\link{lesion_events}}.
+#' @param tumour Numeric \code{n_patients} x \code{T} matrix of tumour event
+#'   indicators, with the same dimensions as \code{lesion}, typically the
+#'   \code{events} component returned by \code{\link{tumour_events}}.
 #'
 #' @return A \code{data.frame} with \code{n_patients} rows and two columns:
 #' \describe{
 #'   \item{\code{time}}{Integer visit index of the first event of either
-#'     type, or \code{ncol(tumour_events)} if no event occurs.}
+#'     type, or \code{ncol(tumour)} if no event occurs.}
 #'   \item{\code{status}}{Integer (0/1) event indicator; 0 if censored.}
 #' }
 #'
+#' @details \code{NA} entries (post-event censoring rows produced by
+#' \code{\link{tumour_events}} and \code{\link{lesion_events}}) are skipped
+#' when finding the first event in each row.
 #'
-combined_event <- function(lesion_events, tumour_events) {
-  stopifnot(identical(dim(lesion_events), dim(tumour_events)))
-
-  n_visits <- ncol(tumour_events)
+#' @examples
+#' set.seed(1)
+#' mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+#' Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+#' tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+#' les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+#'                        alpha = -2.5, beta = 0, gamma = 0.2,
+#'                        treatment_arm = 0)
+#' pfs <- combined_event(les$events, tum$events)
+#' head(pfs)
+#' table(pfs$status)
+#'
+#' @seealso \code{\link{tumour_events}}, \code{\link{lesion_events}},
+#'   \code{\link{first_event_times}}
+#'
+#' @export
+combined_event <- function(lesion, tumour) {
+  stopifnot(identical(dim(lesion), dim(tumour)))
+  n_visits <- ncol(tumour)
 
   first_visit <- function(row) {
     idx <- which(row == 1)
-    if (length(idx) == 0) Inf else idx[1]
+    if (length(idx) == 0L) Inf else idx[1L]
   }
 
-  t_time <- apply(tumour_events, 1, first_visit)
-  l_time <- apply(lesion_events, 1, first_visit)
-
+  t_time     <- apply(tumour, 1, first_visit)
+  l_time     <- apply(lesion, 1, first_visit)
   first_time <- pmin(t_time, l_time)
-  status     <- as.integer(is.finite(first_time))
-  time       <- ifelse(is.finite(first_time), first_time, n_visits)
+
+  status <- as.integer(is.finite(first_time))
+  time   <- as.integer(ifelse(is.finite(first_time), first_time, n_visits))
 
   data.frame(time = time, status = status)
 }
-
 
 #' Extract time-to-first-event from an event-indicator matrix
 #'
@@ -358,32 +378,64 @@ separate_event_times <- function(events_mat) {
   data.frame(time = time, status = status)
 }
 
-
 #' Apply administrative censoring at a cutoff visit
 #'
 #' Truncates a composite (\code{time}, \code{status}) data frame at a
 #' user-specified administrative cutoff: events occurring strictly after
 #' \code{cens_at} are marked as censored at \code{cens_at}. Useful for
-#' simulating short follow-up scenarios.
+#' simulating short-follow-up scenarios or sensitivity analyses where the
+#' study is treated as if it had ended earlier than the simulated horizon.
 #'
-#' @param ce A \code{data.frame} with columns \code{time} and \code{status}
-#'   (e.g. as returned by \code{\link{combined_event}} or
-#'   \code{\link{find_event_time}}).
-#' @param cens_at Numeric cutoff visit. If \code{NULL} or \code{Inf}, the
-#'   input is returned unchanged.
+#' @param data A \code{data.frame} with columns \code{time} and
+#'   \code{status}, e.g. as returned by \code{\link{combined_event}} or
+#'   \code{\link{first_event_times}}.
+#' @param cens_at Numeric cutoff. Observations with \code{time > cens_at}
+#'   have their \code{status} set to 0 and \code{time} replaced by
+#'   \code{cens_at}. If \code{NULL} or \code{Inf}, \code{data} is returned
+#'   unchanged.
 #'
-#' @return The input data frame with \code{time} capped at \code{cens_at}
-#'   and \code{status} set to 0 for any event after the cutoff.
+#' @return A data frame of the same shape as \code{data}, with \code{time}
+#'   capped at \code{cens_at} and \code{status} set to 0 for any event
+#'   after the cutoff.
 #'
+#' @examples
+#' set.seed(1)
+#' mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+#' Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+#' tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+#' les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+#'                        alpha = -2.5, beta = 0, gamma = 0.2,
+#'                        treatment_arm = 0)
+#' pfs <- combined_event(les$events, tum$events)
 #'
-apply_admin_censoring <- function(ce, cens_at) {
-  if (is.null(cens_at) || is.infinite(cens_at)) return(ce)
-  censored <- ce$time > cens_at
-  ce$status[censored] <- 0L
-  ce$time[censored]   <- cens_at
-  ce
-}
+#' # Censor at visit 3
+#' pfs_short <- apply_admin_censoring(pfs, cens_at = 3)
+#' table(pfs$status, pfs_short$status)
+#'
+#' @seealso \code{\link{combined_event}}
+#'
+#' @export
+apply_admin_censoring <- function(data, cens_at) {
+  if (is.null(cens_at) || is.infinite(cens_at)) return(data)
 
+  stopifnot(
+    is.data.frame(data),
+    all(c("time", "status") %in% names(data)),
+    is.numeric(cens_at),
+    length(cens_at) == 1L
+  )
+
+  if (cens_at < 1) {
+    warning("cens_at = ", cens_at,
+            " censors all observations; this is rarely intended.")
+  }
+
+  censored <- data$time > cens_at
+  data$status[censored] <- 0L
+  data$time[censored]   <- cens_at
+
+  data
+}
 
 #' Simulate a single two-arm trial
 #'
