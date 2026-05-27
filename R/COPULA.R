@@ -356,7 +356,7 @@ pfs_copula_boot <- function(d_time, d_status, y_time, y_status,
 #' @importFrom survival survfit Surv
 #' @importFrom copula claytonCopula frankCopula gumbelCopula fitCopula pCopula
 #' @importFrom stats stepfun
-#' @export
+#'
 pfs_copula_arm_S <- function(arm_data, T_visits, family = "gumbel") {
   ll <- separate_event_times(arm_data$lesion$events)
   tt <- separate_event_times(arm_data$tumour$events)
@@ -481,7 +481,6 @@ copula_arm <- function(t_events, l_events, grid,
 #'
 #' @return A scalar L1 statistic; \code{NA_real_} if \eqn{b < a}.
 #'
-#' @export
 L1_stat_from_S <- function(S0, S1, trial) {
   T_visits <- length(S0)
   ce_c <- first_event_times(trial$ctrl$tumour$events, trial$ctrl$lesion$events)
