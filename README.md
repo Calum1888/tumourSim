@@ -35,7 +35,7 @@ In a stratified analysis of the PRIME colorectal cancer trial, the copula-based 
 ### Simulation study highlights
 
 | Scenario | Kaplan–Meier | Augmented-Binary | **Copula (Gumbel)** |
-|-----------------|:-----------------:|:-----------------:|:-----------------:|
+|----|:--:|:--:|:--:|
 | Type I error (null) | 0.040 | 0.045 | **0.045** ✓ |
 | Heavy-tail null | 0.055 | **0.174** ✗ inflated | **0.046** ✓ |
 | Small treatment effect | 0.371 | 0.405 | **0.395** |
