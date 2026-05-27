@@ -1,8 +1,8 @@
-^.*\.Rproj$
+^Analysis$
+^Plots$
+^.*\.pdf$
+^.*\.png$
+^tumourSim\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
-^Analysis$
-^Log_Rank_Scenario1to4$
-^Power_Curve_DF$
-^cross_diff_increase_scenarios$
-^log_rank_scenario5to7$
+^README\.md$
