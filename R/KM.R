@@ -118,40 +118,70 @@ km_logrank_pvalue <- function(trial) {
   stats::pchisq(lr$chisq, df = length(lr$n) - 1L, lower.tail = FALSE)
 }
 
-
-#' Approximate the true PFS curve by large-sample Monte Carlo
+#' Monte Carlo approximation of the true progression-free survival curve
 #'
-#' Approximates the true progression-free survival curve under the
-#' data-generating model by simulating a very large single-arm cohort and
-#' applying Kaplan-Meier to the composite endpoint. Used as ground truth
-#' for coverage and bias evaluation in
-#' \code{\link{simulate_metrics_all}}.
+#' Approximates the true PFS curve under the data-generating model by
+#' simulating a large single-arm cohort and applying Kaplan-Meier to the
+#' composite tumour-plus-lesion endpoint. The result is used as ground
+#' truth for coverage and bias evaluation in
+#' \code{\link{simulate_metrics_all}}. Monte Carlo error decays as
+#' \eqn{O(1/\sqrt{n_{\mathrm{big}}})}, so for accuracy at the third decimal
+#' place use \code{n_big} of order \eqn{10^5} or larger.
 #'
-#' @param grid Numeric vector of time points at which to evaluate the true
-#'   PFS curve.
+#' @param grid Numeric vector of non-negative time points at which to
+#'   evaluate the true PFS curve.
+#' @param mu Numeric vector of length \code{T} giving the tumour log-ratio
+#'   mean, passed to \code{\link{tumour_events}}.
+#' @param covariance Numeric \code{T} x \code{T} covariance matrix for the
+#'   tumour trajectory, passed to \code{\link{tumour_events}}.
+#' @param threshold Numeric (> 1). Multiplicative tumour-progression
+#'   threshold, passed to \code{\link{tumour_events}}.
 #' @param n_big Integer. Size of the simulated cohort. Defaults to
-#'   \code{1e5}; the Monte Carlo error in the truth is
-#'   \eqn{O(1/\sqrt{n_{\mathrm{big}}})}.
-#' @param mean,covariance,threshold Parameters of the tumour model passed
-#'   to \code{\link{tumour_events}}.
-#' @param alpha,beta,gamma,treatment_arm Parameters of the lesion model
-#'   passed to \code{\link{lesion_events}}. Defaults give the
-#'   single-arm baseline used in the included scenarios.
+#'   \code{1e5}.
+#' @param alpha,beta,gamma,treatment_arm Lesion-model coefficients passed
+#'   to \code{\link{lesion_events}}. Defaults give the single-arm baseline
+#'   used in the simulation studies of Regan (2026).
 #'
-#' @return A numeric vector of length \code{length(grid)} giving Monte Carlo
-#'   approximations of true PFS at each grid point.
+#' @return A numeric vector of length \code{length(grid)} giving the Monte
+#'   Carlo approximation of true PFS at each grid point. Grid points beyond
+#'   the largest simulated event time take the value of the survival
+#'   function at the rightmost observed time (\code{extend = TRUE}).
+#'
+#' @examples
+#' \donttest{
+#' mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+#' Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+#'
+#' # Small n_big for example speed; use 1e5 in practice
+#' set.seed(1)
+#' s <- true_pfs(grid = 1:5, mu = mu, covariance = Sigma,
+#'               threshold = 1.2, n_big = 2000)
+#' round(s, 3)
+#' }
+#'
+#' @seealso \code{\link{tumour_events}}, \code{\link{lesion_events}},
+#'   \code{\link{combined_event}}, \code{\link{simulate_metrics_all}}
 #'
 #' @importFrom survival survfit Surv
 #' @export
-true_pfs <- function(grid, n_big = 1e5,
-                     mean, covariance, threshold,
-                     alpha = -2.5, beta = 0.0, gamma = 0.2, treatment_arm = 0) {
+true_pfs <- function(grid, mu, covariance, threshold,
+                     n_big = 1e5,
+                     alpha = -2.5, beta = 0.0, gamma = 0.2,
+                     treatment_arm = 0) {
+  stopifnot(
+    is.numeric(grid), all(grid >= 0),
+    n_big >= 100
+  )
 
-  t_big <- tumour_events(n_big, mean, covariance, threshold)
+  t_big <- tumour_events(n_big, mu = mu, covariance = covariance,
+                         threshold = threshold)
   l_big <- lesion_events(n_big, t_big$log_ratios_vs_baseline,
                          alpha = alpha, beta = beta, gamma = gamma,
                          treatment_arm = treatment_arm)
   ce_big <- combined_event(t_big$events, l_big$events)
-  km_big <- survfit(Surv(time, status) ~ 1, data = ce_big)
+
+  surv_obj <- survival::Surv(ce_big$time, ce_big$status)
+  km_big   <- survival::survfit(surv_obj ~ 1)
+
   summary(km_big, times = grid, extend = TRUE)$surv
 }

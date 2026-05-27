@@ -29,7 +29,6 @@
 #' @return A numeric matrix with \eqn{t + \binom{t}{2}} rows and \eqn{t}
 #'   columns.
 #'
-#' @export
 build_pairwise_A <- function(t) {
   n_baseline <- t
   pairs <- if (t >= 2) {
@@ -67,7 +66,7 @@ build_pairwise_A <- function(t) {
 #'   \eqn{t = 1, \ldots, T}.
 #'
 #' @importFrom mvtnorm pmvnorm
-#' @export
+#'
 S_tumour_from_params <- function(mu, Sigma, threshold) {
   T_visits <- length(mu)
   log_c <- log(threshold)
@@ -108,7 +107,7 @@ S_tumour_from_params <- function(mu, Sigma, threshold) {
 #'
 #' @importFrom dplyr arrange group_by mutate ungroup summarise pull "%>%"
 #' @importFrom stats model.matrix plogis delete.response terms
-#' @export
+#'
 S_lesion_from_params <- function(beta, fit, lesion_out, treatment) {
   D          <- lesion_out$events
   tumour_lag <- lesion_out$all_tumour_sizes
@@ -157,7 +156,7 @@ S_lesion_from_params <- function(beta, fit, lesion_out, treatment) {
 #' @return A fitted \code{\link[stats]{glm}} object.
 #'
 #' @importFrom stats glm binomial as.formula
-#' @export
+#'
 fit_lesion <- function(lesion_out, treatment) {
   D          <- lesion_out$events
   tumour_lag <- lesion_out$all_tumour_sizes
@@ -192,7 +191,7 @@ fit_lesion <- function(lesion_out, treatment) {
 #'   tumour-side survival on the visit grid.
 #'
 #' @importFrom stats cov
-#' @export
+#'
 estimate_S_tumour_mvn <- function(Y, threshold) {
   mu_hat    <- colMeans(Y)
   Sigma_hat <- cov(Y)
@@ -214,7 +213,7 @@ estimate_S_tumour_mvn <- function(Y, threshold) {
 #'   lesion-side survival on the visit grid.
 #'
 #' @importFrom stats coef
-#' @export
+#'
 estimate_S_lesion <- function(lesion_out, treatment) {
   fit <- fit_lesion(lesion_out, treatment)
   S_lesion_from_params(coef(fit), fit, lesion_out, treatment)
@@ -223,59 +222,143 @@ estimate_S_lesion <- function(lesion_out, treatment) {
 
 #' Single-dataset AugBin PFS point estimate
 #'
-#' Computes the AugBin PFS curve on one simulated dataset by combining the
-#' tumour-side MVN survival with the lesion-side logistic-regression
-#' survival: \eqn{S_{\mathrm{PFS}}(t) = S_T(t) S_D(t)}.
+#' Computes the augmented-binary progression-free survival curve on a
+#' single simulated dataset by combining the tumour-side multivariate-normal
+#' survival with the lesion-side logistic-regression survival:
+#' \deqn{S_{\mathrm{PFS}}(t) = S_T(t) \, S_D(t).}
+#' The product form assumes independence between tumour and lesion event
+#' processes; relaxing that assumption is the motivation for the
+#' copula-based estimator in \code{\link{pfs_copula}}. Implements the
+#' method of Lin and Wason (2020).
 #'
-#' @param tumour A list as returned by \code{\link{tumour_events}}.
-#' @param lesion A list as returned by \code{\link{lesion_events}}.
-#' @param treatment Numeric vector of length \code{nrow(events)} giving
-#'   per-patient treatment indicator.
-#' @param threshold Numeric (> 1). Tumour progression threshold. Defaults
-#'   to 1.2.
+#' @param tumour A list as returned by \code{\link{tumour_events}}, with at
+#'   least element \code{log_ratios_vs_baseline}.
+#' @param lesion A list as returned by \code{\link{lesion_events}}, with
+#'   elements \code{events} and \code{all_tumour_sizes}.
+#' @param treatment Numeric vector of length
+#'   \code{nrow(tumour$log_ratios_vs_baseline)} giving the per-patient
+#'   treatment indicator (typically 0 for control, 1 for treatment).
+#' @param threshold Numeric (> 1). Multiplicative tumour-progression
+#'   threshold. Defaults to 1.2 (RECIST v1.1).
 #'
-#' @return A list with elements \code{S_pfs}, \code{S_tumour}, and
-#'   \code{S_lesion}, each a numeric vector of length \code{T}.
+#' @return A named list:
+#' \describe{
+#'   \item{\code{S_pfs}}{Numeric vector of length \code{T} giving the AugBin
+#'     PFS estimate.}
+#'   \item{\code{S_tumour}}{Tumour-side survival \eqn{S_T(t)}.}
+#'   \item{\code{S_lesion}}{Lesion-side survival \eqn{S_D(t)}.}
+#' }
+#'
+#' @examples
+#' set.seed(1)
+#' mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+#' Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+#' tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+#' les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+#'                        alpha = -2.5, beta = 0, gamma = 0.2,
+#'                        treatment_arm = 0)
+#' fit <- augbin_estimate(tum, les, treatment = rep(0, 50))
+#' round(fit$S_pfs, 3)
+#'
+#' @seealso \code{\link{augbin_bootstrap}} for confidence intervals,
+#'   \code{\link{augbin_test_pooled}} for two-arm testing,
+#'   \code{\link{pfs_copula}} for the copula alternative.
+#'
+#' @references
+#' Lin, C.-J. and Wason, J. (2020). Efficient analysis of time-to-event
+#' endpoints when the event involves a continuous variable crossing a
+#' threshold. \emph{Journal of Statistical Planning and Inference}, 208,
+#' 119--129.
 #'
 #' @export
 augbin_estimate <- function(tumour, lesion, treatment, threshold = 1.2) {
+  stopifnot(
+    is.list(tumour), "log_ratios_vs_baseline" %in% names(tumour),
+    is.list(lesion), all(c("events", "all_tumour_sizes") %in% names(lesion)),
+    length(treatment) == nrow(tumour$log_ratios_vs_baseline),
+    nrow(tumour$log_ratios_vs_baseline) == nrow(lesion$events),
+    threshold > 1
+  )
+
   S_t <- estimate_S_tumour_mvn(tumour$log_ratios_vs_baseline, threshold)
   S_d <- estimate_S_lesion(lesion, treatment)
+
   list(S_pfs = S_t * S_d, S_tumour = S_t, S_lesion = S_d)
 }
 
 
 #' Patient-level bootstrap confidence intervals for AugBin PFS
 #'
-#' Computes pointwise patient-level bootstrap confidence intervals for the
-#' AugBin PFS estimator using the percentile method.
+#' Computes pointwise patient-level percentile bootstrap confidence
+#' intervals for the AugBin PFS estimator. Each replicate resamples
+#' patients with replacement, refits the tumour-side MVN and lesion-side
+#' logistic models, and combines them via \eqn{S_T(t) S_D(t)}. Replicates
+#' that produce degenerate fits (e.g. when the resampled cohort lacks
+#' variability in lesion outcomes) are recorded as \code{NA} rows and
+#' excluded from the quantile computation.
 #'
-#' @param tumour A list with at least \code{log_ratios_vs_baseline}.
-#' @param lesion A list with \code{all_tumour_sizes} and \code{events}.
-#' @param treatment Numeric vector of length \code{n}.
-#' @param B Integer. Number of bootstrap replicates.
-#' @param threshold Numeric. Tumour progression threshold. Defaults to 1.2.
-#' @param alpha Numeric in \eqn{(0, 1)}. Nominal two-sided error rate.
-#'   Defaults to 0.05.
+#' @param tumour A list as returned by \code{\link{tumour_events}}.
+#' @param lesion A list as returned by \code{\link{lesion_events}}.
+#' @param treatment Numeric vector of length
+#'   \code{nrow(tumour$log_ratios_vs_baseline)} giving per-patient
+#'   treatment indicators.
+#' @param B Integer (>= 1). Number of bootstrap replicates.
+#' @param threshold Numeric (> 1). Tumour progression threshold. Defaults
+#'   to 1.2.
+#' @param conf_level Numeric in (0, 1). Confidence level for the
+#'   percentile intervals. Defaults to 0.95.
 #'
-#' @return A list with elements \code{S_boot} (the \code{B x T} matrix of
-#'   bootstrap PFS curves), \code{lower}, and \code{upper} (numeric
-#'   vectors of length \code{T} giving the percentile CIs).
+#' @return A named list:
+#' \describe{
+#'   \item{\code{S_boot}}{A \code{B} x \code{T} matrix where row \code{b}
+#'     holds the AugBin PFS curve from the \code{b}-th bootstrap replicate.
+#'     Rows are \code{NA} for replicates that failed.}
+#'   \item{\code{lower, upper}}{Numeric vectors of length \code{T} giving
+#'     the \code{conf_level} percentile confidence interval at each visit.}
+#'   \item{\code{n_failed}}{Integer count of bootstrap replicates that
+#'     produced degenerate fits.}
+#' }
 #'
-#' @details Bootstrap replicates that throw errors (e.g. degenerate fits)
-#'   contribute \code{NA_real_} rows and are excluded from the quantile
-#'   computation via \code{na.rm = TRUE}.
+#' @examples
+#' set.seed(1)
+#' mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+#' Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+#' tum   <- tumour_events(30, mu = mu, covariance = Sigma, threshold = 1.2)
+#' les   <- lesion_events(30, tum$log_ratios_vs_baseline,
+#'                        alpha = -2.5, beta = 0, gamma = 0.2,
+#'                        treatment_arm = 0)
+#'
+#' fit <- augbin_bootstrap(tum, les, treatment = rep(0, 30), B = 20)
+#' round(rbind(fit$lower, fit$upper), 3)
+#'
+#' \donttest{
+#' # Closer to the simulation-study defaults (B = 200)
+#' fit_full <- augbin_bootstrap(tum, les, treatment = rep(0, 30), B = 200)
+#' }
+#'
+#' @seealso \code{\link{augbin_estimate}}, \code{\link{pfs_copula_boot}}
 #'
 #' @importFrom stats quantile
 #' @export
 augbin_bootstrap <- function(tumour, lesion, treatment, B,
-                             threshold = 1.2, alpha = 0.05) {
-  n        <- nrow(tumour$log_ratios_vs_baseline)
-  T_visits <- ncol(tumour$log_ratios_vs_baseline)
-  S_boot   <- matrix(NA_real_, B, T_visits)
+                             threshold = 1.2, conf_level = 0.95) {
+  stopifnot(
+    is.list(tumour), "log_ratios_vs_baseline" %in% names(tumour),
+    is.list(lesion), all(c("events", "all_tumour_sizes") %in% names(lesion)),
+    length(treatment) == nrow(tumour$log_ratios_vs_baseline),
+    B >= 1,
+    conf_level > 0, conf_level < 1,
+    threshold > 1
+  )
 
-  for (b in 1:B) {
+  n         <- nrow(tumour$log_ratios_vs_baseline)
+  T_visits  <- ncol(tumour$log_ratios_vs_baseline)
+  alpha_err <- 1 - conf_level
+  S_boot    <- matrix(NA_real_, B, T_visits)
+
+  for (b in seq_len(B)) {
     idx <- sample.int(n, n, replace = TRUE)
+
     tumour_b <- list(
       log_ratios_vs_baseline = tumour$log_ratios_vs_baseline[idx, , drop = FALSE]
     )
@@ -283,19 +366,33 @@ augbin_bootstrap <- function(tumour, lesion, treatment, B,
       all_tumour_sizes = lesion$all_tumour_sizes[idx, , drop = FALSE],
       events           = lesion$events[idx, , drop = FALSE]
     )
-    trt_b <- treatment[idx]
 
     S_boot[b, ] <- tryCatch(
-      augbin_estimate(tumour_b, lesion_b, trt_b, threshold)$S_pfs,
+      augbin_estimate(tumour_b, lesion_b, treatment[idx], threshold)$S_pfs,
       error = function(e) rep(NA_real_, T_visits)
     )
   }
 
-  lower <- apply(S_boot, 2, quantile, probs = alpha / 2,     na.rm = TRUE)
-  upper <- apply(S_boot, 2, quantile, probs = 1 - alpha / 2, na.rm = TRUE)
-  list(S_boot = S_boot, lower = lower, upper = upper)
-}
+  lower <- apply(S_boot, 2, stats::quantile, probs = alpha_err / 2,
+                 na.rm = TRUE)
+  upper <- apply(S_boot, 2, stats::quantile, probs = 1 - alpha_err / 2,
+                 na.rm = TRUE)
 
+  n_failed <- sum(is.na(S_boot[, 1]))
+  if (n_failed > 0.1 * B) {
+    warning(sprintf(
+      "%d of %d bootstrap replicates failed (%.1f%%); CIs may be unreliable.",
+      n_failed, B, 100 * n_failed / B
+    ))
+  }
+
+  list(
+    S_boot   = S_boot,
+    lower    = lower,
+    upper    = upper,
+    n_failed = n_failed
+  )
+}
 
 # -----------------------------------------------------------------------------
 # vech helpers and asymptotic covariance of vech(Sigma_hat)
@@ -311,7 +408,6 @@ augbin_bootstrap <- function(tumour, lesion, treatment, B,
 #'
 #' @return A numeric vector of length \eqn{T(T+1)/2}.
 #'
-#' @export
 vech <- function(M) M[lower.tri(M, diag = TRUE)]
 
 
@@ -344,7 +440,6 @@ vech_indices <- function(T_visits) {
 #'
 #' @return A numeric matrix of dimension \eqn{T(T+1)/2}.
 #'
-#' @export
 asymp_cov_vech_Sigma <- function(Sigma, n) {
   T_visits <- nrow(Sigma)
   idx <- vech_indices(T_visits)
@@ -381,7 +476,6 @@ asymp_cov_vech_Sigma <- function(Sigma, n) {
 #'   \code{V_beta}.
 #'
 #' @importFrom stats coef vcov cov
-#' @export
 augbin_fit_with_grads <- function(tumour, lesion, treatment, threshold = 1.2,
                                   eps = 1e-3) {
   Y        <- tumour$log_ratios_vs_baseline
@@ -451,150 +545,236 @@ augbin_fit_with_grads <- function(tumour, lesion, treatment, threshold = 1.2,
 
 #' Per-arm AugBin delta-method standard errors for S_PFS(t)
 #'
-#' Computes the AugBin PFS curve and its pointwise delta-method standard
-#' errors on a single arm by combining the parameter-block gradients and
-#' covariances returned by \code{\link{augbin_fit_with_grads}}.
+#' Internal helper. Given a fitted AugBin model and its gradient blocks
+#' from \code{\link{augbin_fit_with_grads}}, returns the per-visit PFS
+#' estimates together with delta-method standard errors. Used by
+#' \code{\link{augbin_test_delta}} and \code{\link{augbin_test_pooled}}.
 #'
-#' @inheritParams augbin_fit_with_grads
+#' @param tumour,lesion,treatment,threshold As in \code{\link{augbin_estimate}}.
+#' @param fd_step Numeric finite-difference step for the gradient blocks.
+#'   Defaults to \code{1e-3}.
 #'
-#' @return A list with elements \code{S_pfs} and \code{se}, each of
-#'   length \code{T}.
+#' @return A list with \code{S_pfs} (numeric vector of length \code{T}) and
+#'   \code{se} (numeric vector of length \code{T} of delta-method standard
+#'   errors).
 #'
-#' @export
+#' @keywords internal
 augbin_delta_full <- function(tumour, lesion, treatment, threshold = 1.2,
-                              eps = 1e-3) {
-  fit <- augbin_fit_with_grads(tumour, lesion, treatment, threshold, eps)
+                              fd_step = 1e-3) {
+  fit      <- augbin_fit_with_grads(tumour, lesion, treatment, threshold, fd_step)
   T_visits <- length(fit$S_pfs)
+  var_S    <- numeric(T_visits)
 
-  var_S <- numeric(T_visits)
-  for (t in 1:T_visits) {
-    g_mu    <- fit$grad_mu[, t]
-    g_vechS <- fit$grad_vechSig[, t]
-    g_beta  <- fit$grad_beta[, t]
-    var_S[t] <- as.numeric(t(g_mu)    %*% fit$V_mu      %*% g_mu)    +
-      as.numeric(t(g_vechS) %*% fit$V_vechSig %*% g_vechS) +
-      as.numeric(t(g_beta)  %*% fit$V_beta    %*% g_beta)
+  qf <- function(g, V) as.numeric(crossprod(g, V %*% g))
+
+  for (t in seq_len(T_visits)) {
+    var_S[t] <- qf(fit$grad_mu[, t],       fit$V_mu) +
+      qf(fit$grad_vechSig[, t],  fit$V_vechSig) +
+      qf(fit$grad_beta[, t],     fit$V_beta)
   }
+
+  if (any(var_S < -1e-8)) {
+    warning("AugBin delta variance had materially negative entries (min = ",
+            signif(min(var_S), 3), "); clipped to 0.")
+  }
+
+  # Clip at 0 to guard against tiny negative variances from numerical error
+  # in finite-difference gradients
   se_S <- sqrt(pmax(var_S, 0))
+
   list(S_pfs = fit$S_pfs, se = se_S)
 }
-
 
 #' AugBin delta-method Wald test at the final visit
 #'
 #' Two-arm Wald test on the log-ratio of treatment-to-control PFS at the
-#' final visit:
-#' \eqn{Z = 0.5 (\log S_0(T) - \log S_1(T))},
-#' \eqn{\mathrm{Var}(Z) = 0.25 (\mathrm{Var}(S_0)/S_0^2 + \mathrm{Var}(S_1)/S_1^2)},
-#' with arm-specific variances from \code{\link{augbin_delta_full}}.
-#' Under H_0, \eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
+#' final visit, with arm-specific variances obtained from
+#' \code{\link{augbin_delta_full}}. The test statistic is
+#' \deqn{Z = \log S_0(T) - \log S_1(T),
+#'   \quad
+#'   \mathrm{Var}(Z) = \frac{\mathrm{Var}(S_0(T))}{S_0(T)^2} +
+#'                     \frac{\mathrm{Var}(S_1(T))}{S_1(T)^2},}
+#' and under the null hypothesis of equal final-visit survival,
+#' \eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
 #'
-#' @param trial A two-arm trial list (e.g. from \code{\link{simulate_trial}}).
-#' @param threshold Numeric. Tumour progression threshold. Defaults to 1.2.
+#' This test compares survival only at the final visit. For a test that
+#' aggregates information across all visits via a pooled hazard contrast,
+#' see \code{\link{augbin_test_pooled}}.
 #'
-#' @return A scalar p-value, or \code{NA_real_} on numerical failure.
+#' @param trial A two-arm trial list as returned by
+#'   \code{\link{simulate_trial}}.
+#' @param threshold Numeric (> 1). Tumour progression threshold. Defaults
+#'   to 1.2.
+#' @param eps Numeric in (0, 0.5). Boundary tolerance: if either arm's
+#'   final-visit survival estimate falls within \code{eps} of 0 or 1, the
+#'   test returns \code{NA_real_}. Defaults to \code{1e-6}.
+#'
+#' @return A scalar two-sided p-value, or \code{NA_real_} on numerical
+#'   failure (degenerate arm fit, boundary survival estimate, or
+#'   non-positive variance).
+#'
+#' @examples
+#' set.seed(1)
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5); diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#'
+#' trial <- simulate_trial(80, mu_ctrl, mu_trt, Sigma,
+#'                         beta_lesion = -0.5, gamma_lesion = 0.2)
+#' augbin_test_delta(trial)
+#'
+#' @seealso \code{\link{augbin_test_pooled}}, \code{\link{augbin_estimate}},
+#'   \code{\link{km_logrank_pvalue}}
 #'
 #' @importFrom stats pchisq
 #' @export
-augbin_test_delta <- function(trial, threshold = 1.2) {
+augbin_test_delta <- function(trial, threshold = 1.2, eps = 1e-6) {
+  stopifnot(
+    is.list(trial),
+    all(c("ctrl", "trt") %in% names(trial)),
+    threshold > 1,
+    eps > 0, eps < 0.5
+  )
 
-  treat_c <- rep(0, nrow(trial$ctrl$tumour$log_ratios_vs_baseline))
-  treat_t <- rep(0, nrow(trial$trt$tumour$log_ratios_vs_baseline))
+  treat_c <- rep(0L, nrow(trial$ctrl$tumour$log_ratios_vs_baseline))
+  treat_t <- rep(1L, nrow(trial$trt$tumour$log_ratios_vs_baseline))
 
   ctrl_res <- tryCatch(
     augbin_delta_full(trial$ctrl$tumour, trial$ctrl$lesion, treat_c, threshold),
-    error = function(e) NULL
+    error = function(e) {
+      warning("AugBin delta fit failed on control arm: ", conditionMessage(e))
+      NULL
+    }
   )
   trt_res <- tryCatch(
     augbin_delta_full(trial$trt$tumour, trial$trt$lesion, treat_t, threshold),
-    error = function(e) NULL
+    error = function(e) {
+      warning("AugBin delta fit failed on treatment arm: ", conditionMessage(e))
+      NULL
+    }
   )
   if (is.null(ctrl_res) || is.null(trt_res)) return(NA_real_)
 
-  T_idx  <- length(ctrl_res$S_pfs)
-  S0     <- ctrl_res$S_pfs[T_idx]
-  S1     <- trt_res$S_pfs[T_idx]
-  var_S0 <- ctrl_res$se[T_idx]^2
-  var_S1 <- trt_res$se[T_idx]^2
+  final  <- length(ctrl_res$S_pfs)
+  S0     <- ctrl_res$S_pfs[final]
+  S1     <- trt_res$S_pfs[final]
 
-  eps <- 1e-6
-  S0c <- pmin(pmax(S0, eps), 1 - eps)
-  S1c <- pmin(pmax(S1, eps), 1 - eps)
+  if (S0 < eps || S1 < eps || S0 > 1 - eps || S1 > 1 - eps) {
+    return(NA_real_)
+  }
 
-  Z     <- 0.5 * (log(S0c) - log(S1c))
-  var_Z <- 0.25 * (var_S0 / S0c^2 + var_S1 / S1c^2)
+  var_S0 <- ctrl_res$se[final]^2
+  var_S1 <- trt_res$se[final]^2
+
+  Z     <- log(S0) - log(S1)
+  var_Z <- var_S0 / S0^2 + var_S1 / S1^2
 
   if (!is.finite(var_Z) || var_Z <= 0) return(NA_real_)
-  chisq <- Z^2 / var_Z
-  pchisq(chisq, df = 1, lower.tail = FALSE)
+
+  stats::pchisq(Z^2 / var_Z, df = 1, lower.tail = FALSE)
 }
 
 
 #' AugBin pooled-hazard test with delta-method variance
 #'
 #' Two-arm test on the pooled discrete-hazard contrast
-#' \eqn{Z(\tau) = 0.5 \sum_{t=1}^{\tau} (h_1(t) - h_0(t))} with variance
-#' propagated by the delta method through
-#' \eqn{\theta \to S \to h \to Z}. Under H_0,
-#' \eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
+#' \deqn{Z(\tau) = \tfrac{1}{2} \sum_{t=1}^{\tau} \bigl(h_1(t) - h_0(t)\bigr),}
+#' with variance propagated by the delta method through
+#' \eqn{\theta \to S \to h \to Z}. Under the null hypothesis of equal
+#' arm-specific PFS curves, \eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
 #'
-#' @param trial A two-arm trial list (e.g. from \code{\link{simulate_trial}}).
-#' @param threshold Numeric. Tumour progression threshold. Defaults to 1.2.
+#' The variance combines three parameter blocks per arm (the tumour-side
+#' mean, the vech of the tumour-side covariance, and the lesion-side
+#' regression coefficients), each weighted by the chain-rule gradient
+#' \eqn{dZ/d\theta = (dS/d\theta)(dZ/dS)} with \eqn{dZ/dS} obtained
+#' analytically. Arms are assumed asymptotically independent, which holds
+#' under random assignment but not under matched-pair designs.
 #'
-#' @return A scalar p-value, or \code{NA_real_} on numerical failure.
+#' @param trial A two-arm trial list as returned by
+#'   \code{\link{simulate_trial}}.
+#' @param threshold Numeric (> 1). Tumour progression threshold. Defaults
+#'   to 1.2.
 #'
-#' @details The variance combines the three parameter blocks per arm
-#'   (mean, vech of covariance, lesion coefficients), each weighted by
-#'   the gradient \eqn{dZ/d\theta = (dS/d\theta) \cdot (dZ/dS)} where
-#'   \eqn{dZ/dS} is given analytically by \code{\link{gradZ_wrt_S_arm}}.
-#'   Arms are assumed asymptotically independent.
+#' @return A scalar two-sided p-value, or \code{NA_real_} on numerical
+#'   failure (degenerate arm fit, non-positive variance, or no overlapping
+#'   at-risk visits between arms).
+#'
+#' @examples
+#' set.seed(1)
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5); diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#'
+#' trial <- simulate_trial(80, mu_ctrl, mu_trt, Sigma,
+#'                         beta_lesion = -0.5, gamma_lesion = 0.2)
+#' augbin_test_pooled(trial)
+#'
+#' @seealso \code{\link{augbin_test_delta}}, \code{\link{km_logrank_pvalue}},
+#'   \code{\link{copula_L1_permutation_test}}
+#'
+#' @references
+#' Lin, C.-J. and Wason, J. (2020). Efficient analysis of time-to-event
+#' endpoints when the event involves a continuous variable crossing a
+#' threshold. \emph{Journal of Statistical Planning and Inference}, 208,
+#' 119--129.
 #'
 #' @importFrom stats pchisq
 #' @export
 augbin_test_pooled <- function(trial, threshold = 1.2) {
+  stopifnot(
+    is.list(trial),
+    all(c("ctrl", "trt") %in% names(trial)),
+    threshold > 1
+  )
 
-  treat_c <- rep(0, nrow(trial$ctrl$tumour$log_ratios_vs_baseline))
-  treat_t <- rep(1, nrow(trial$trt$tumour$log_ratios_vs_baseline))
+  treat_c <- rep(0L, nrow(trial$ctrl$tumour$log_ratios_vs_baseline))
+  treat_t <- rep(1L, nrow(trial$trt$tumour$log_ratios_vs_baseline))
 
   ctrl <- tryCatch(
     augbin_fit_with_grads(trial$ctrl$tumour, trial$ctrl$lesion,
                           treat_c, threshold),
-    error = function(e) NULL
+    error = function(e) {
+      warning("AugBin pooled fit failed on control arm: ", conditionMessage(e))
+      NULL
+    }
   )
-  trt  <- tryCatch(
+  trt <- tryCatch(
     augbin_fit_with_grads(trial$trt$tumour, trial$trt$lesion,
                           treat_t, threshold),
-    error = function(e) NULL
+    error = function(e) {
+      warning("AugBin pooled fit failed on treatment arm: ", conditionMessage(e))
+      NULL
+    }
   )
   if (is.null(ctrl) || is.null(trt)) return(NA_real_)
 
   S0 <- ctrl$S_pfs
   S1 <- trt$S_pfs
-  pz <- pooled_hazard_Z(S0, S1)
-  Z  <- pz$Z
+  pz  <- pooled_hazard_Z(S0, S1)
+  Z   <- pz$Z
   tau <- pz$tau
-  if (!is.finite(Z) || tau < 1) return(NA_real_)
+
+  if (!is.finite(Z) || tau < 1) {
+    warning("AugBin pooled test: no overlapping at-risk visits; returning NA.")
+    return(NA_real_)
+  }
+
+  # Per-arm contribution to Var(Z) under the delta method
+  arm_var <- function(fit, g_S) {
+    dZ_dmu      <- as.numeric(fit$grad_mu      %*% g_S)
+    dZ_dvechSig <- as.numeric(fit$grad_vechSig %*% g_S)
+    dZ_dbeta    <- as.numeric(fit$grad_beta    %*% g_S)
+    drop(crossprod(dZ_dmu,      fit$V_mu      %*% dZ_dmu)) +
+      drop(crossprod(dZ_dvechSig, fit$V_vechSig %*% dZ_dvechSig)) +
+      drop(crossprod(dZ_dbeta,    fit$V_beta    %*% dZ_dbeta))
+  }
 
   g_S0 <- gradZ_wrt_S_arm(S0, tau, arm_sign = -1)
   g_S1 <- gradZ_wrt_S_arm(S1, tau, arm_sign = +1)
 
-  dZ_dmu_0      <- as.numeric(ctrl$grad_mu      %*% g_S0)
-  dZ_dvechSig_0 <- as.numeric(ctrl$grad_vechSig %*% g_S0)
-  dZ_dbeta_0    <- as.numeric(ctrl$grad_beta    %*% g_S0)
-
-  dZ_dmu_1      <- as.numeric(trt$grad_mu       %*% g_S1)
-  dZ_dvechSig_1 <- as.numeric(trt$grad_vechSig  %*% g_S1)
-  dZ_dbeta_1    <- as.numeric(trt$grad_beta     %*% g_S1)
-
-  varZ <-
-    drop(t(dZ_dmu_0)      %*% ctrl$V_mu      %*% dZ_dmu_0)      +
-    drop(t(dZ_dvechSig_0) %*% ctrl$V_vechSig %*% dZ_dvechSig_0) +
-    drop(t(dZ_dbeta_0)    %*% ctrl$V_beta    %*% dZ_dbeta_0)    +
-    drop(t(dZ_dmu_1)      %*% trt$V_mu       %*% dZ_dmu_1)      +
-    drop(t(dZ_dvechSig_1) %*% trt$V_vechSig  %*% dZ_dvechSig_1) +
-    drop(t(dZ_dbeta_1)    %*% trt$V_beta     %*% dZ_dbeta_1)
+  varZ <- arm_var(ctrl, g_S0) + arm_var(trt, g_S1)
 
   if (!is.finite(varZ) || varZ <= 0) return(NA_real_)
-  chisq <- Z^2 / varZ
-  pchisq(chisq, df = 1, lower.tail = FALSE)
+
+  stats::pchisq(Z^2 / varZ, df = 1, lower.tail = FALSE)
 }
