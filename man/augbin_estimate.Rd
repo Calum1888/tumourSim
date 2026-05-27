@@ -7,22 +7,58 @@
 augbin_estimate(tumour, lesion, treatment, threshold = 1.2)
 }
 \arguments{
-\item{tumour}{A list as returned by \code{\link{tumour_events}}.}
+\item{tumour}{A list as returned by \code{\link{tumour_events}}, with at
+least element \code{log_ratios_vs_baseline}.}
 
-\item{lesion}{A list as returned by \code{\link{lesion_events}}.}
+\item{lesion}{A list as returned by \code{\link{lesion_events}}, with
+elements \code{events} and \code{all_tumour_sizes}.}
 
-\item{treatment}{Numeric vector of length \code{nrow(events)} giving
-per-patient treatment indicator.}
+\item{treatment}{Numeric vector of length
+\code{nrow(tumour$log_ratios_vs_baseline)} giving the per-patient
+treatment indicator (typically 0 for control, 1 for treatment).}
 
-\item{threshold}{Numeric (> 1). Tumour progression threshold. Defaults
-to 1.2.}
+\item{threshold}{Numeric (> 1). Multiplicative tumour-progression
+threshold. Defaults to 1.2 (RECIST v1.1).}
 }
 \value{
-A list with elements \code{S_pfs}, \code{S_tumour}, and
-  \code{S_lesion}, each a numeric vector of length \code{T}.
+A named list:
+\describe{
+  \item{\code{S_pfs}}{Numeric vector of length \code{T} giving the AugBin
+    PFS estimate.}
+  \item{\code{S_tumour}}{Tumour-side survival \eqn{S_T(t)}.}
+  \item{\code{S_lesion}}{Lesion-side survival \eqn{S_D(t)}.}
+}
 }
 \description{
-Computes the AugBin PFS curve on one simulated dataset by combining the
-tumour-side MVN survival with the lesion-side logistic-regression
-survival: \eqn{S_{\mathrm{PFS}}(t) = S_T(t) S_D(t)}.
+Computes the augmented-binary progression-free survival curve on a
+single simulated dataset by combining the tumour-side multivariate-normal
+survival with the lesion-side logistic-regression survival:
+\deqn{S_{\mathrm{PFS}}(t) = S_T(t) \, S_D(t).}
+The product form assumes independence between tumour and lesion event
+processes; relaxing that assumption is the motivation for the
+copula-based estimator in \code{\link{pfs_copula}}. Implements the
+method of Lin and Wason (2020).
+}
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+fit <- augbin_estimate(tum, les, treatment = rep(0, 50))
+round(fit$S_pfs, 3)
+
+}
+\references{
+Lin, C.-J. and Wason, J. (2020). Efficient analysis of time-to-event
+endpoints when the event involves a continuous variable crossing a
+threshold. \emph{Journal of Statistical Planning and Inference}, 208,
+119--129.
+}
+\seealso{
+\code{\link{augbin_bootstrap}} for confidence intervals,
+  \code{\link{augbin_test_pooled}} for two-arm testing,
+  \code{\link{pfs_copula}} for the copula alternative.
 }

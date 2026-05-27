@@ -12,38 +12,97 @@ pfs_copula_boot(
   grid,
   family = "gumbel",
   B = 200,
-  alpha = 0.05
+  conf_level = 0.95,
+  method = c("percentile", "cll")
 )
 }
 \arguments{
-\item{d_time, d_status}{Vectors of times and (0/1) event indicators for
-the first endpoint (e.g. new lesion).}
+\item{d_time, d_status}{Numeric and 0/1 vectors giving the observed times
+and event indicators for the lesion (D) endpoint.}
 
-\item{y_time, y_status}{Vectors of times and (0/1) event indicators for
-the second endpoint (e.g. tumour progression).}
+\item{y_time, y_status}{Numeric and 0/1 vectors giving the observed times
+and event indicators for the tumour-progression (Y) endpoint. Paired
+with \code{d_time} and \code{d_status} by patient (one row per
+patient).}
 
-\item{grid}{Numeric vector of time points at which to evaluate PFS.}
+\item{grid}{Numeric vector of non-negative time points at which to
+evaluate the PFS curve.}
 
-\item{family}{Character copula family passed to \code{\link{fit_copula}}.
-Defaults to \code{"gumbel"}.}
+\item{family}{Character. Archimedean copula family, passed to
+\code{\link{fit_copula}}. Defaults to \code{"gumbel"}.}
 
-\item{B}{Integer. Number of bootstrap replicates. Defaults to 200.}
+\item{B}{Integer (>= 1). Number of bootstrap replicates. Defaults to 200.}
 
-\item{alpha}{Numeric in \eqn{(0, 1)}. Nominal two-sided error rate;
-resulting CIs have nominal level \eqn{1 - \alpha}. Defaults to 0.05.}
+\item{conf_level}{Numeric in (0, 1). Confidence level. Defaults to 0.95.}
+
+\item{method}{Character. Either \code{"percentile"} (default) or
+\code{"cll"}; see Details.}
 }
 \value{
-A \code{data.frame} with columns \code{time}, \code{pfs},
-  \code{lower}, \code{upper}.
+A data frame with one row per grid point and columns
+  \code{time}, \code{pfs} (the point estimate), \code{lower}, and
+  \code{upper}.
 }
 \description{
 Computes pointwise bootstrap confidence intervals for the copula-based
-PFS estimator from \code{\link{pfs_copula}} using the complementary
-log-log transform.
+PFS estimator from \code{\link{pfs_copula}}, with a choice of two
+interval methods.
 }
 \details{
-Bootstrap resamples are drawn with replacement at the patient
-  level. The standard error is computed on the complementary log-log
-  scale and back-transformed to preserve the (0, 1) range of the
-  survival function. Failed bootstrap replicates are dropped silently.
+Bootstrap resamples patients with replacement and refits both the
+marginal Kaplan-Meier estimators and the copula on each resample.
+Replicates that fail (e.g. degenerate copula fits) are dropped via
+\code{na.rm = TRUE}.
+
+Two methods for the confidence interval are provided:
+\describe{
+  \item{\code{"percentile"}}{(default) Pointwise intervals are formed
+    by taking the \eqn{\alpha/2} and \eqn{1 - \alpha/2} quantiles of
+    the bootstrap distribution at each grid point. This matches the
+    textbook percentile bootstrap and is invariant to monotone
+    transformations of the survival function.}
+  \item{\code{"cll"}}{Wald-type interval on the complementary log-log
+    scale: the bootstrap standard error of \eqn{\log(-\log S(t))} is
+    used to form a symmetric interval on that scale, then
+    back-transformed. This produces narrower intervals than the
+    percentile method when the sampling distribution is approximately
+    normal on the cloglog scale, and is the method used in the
+    simulation results of Regan (2026).}
+}
+}
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(60, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(60, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+tum_te <- combined_event(tum$events, matrix(0, nrow = 60, ncol = 5))
+les_te <- combined_event(matrix(0, nrow = 60, ncol = 5), les$events)
+
+ci <- pfs_copula_boot(
+  d_time = les_te$time, d_status = les_te$status,
+  y_time = tum_te$time, y_status = tum_te$status,
+  grid = 1:5, B = 20
+)
+ci
+
+\donttest{
+# Closer to the thesis defaults (B = 200, cll method)
+ci_thesis <- pfs_copula_boot(
+  d_time = les_te$time, d_status = les_te$status,
+  y_time = tum_te$time, y_status = tum_te$status,
+  grid = 1:5, B = 200, method = "cll"
+)
+}
+
+}
+\references{
+Regan, C. (2026). \emph{Copula Modelling for Mixed Continuous and Binary
+Variables in Survival Analysis: Applications to Colorectal Cancer}.
+MMath dissertation.
+}
+\seealso{
+\code{\link{pfs_copula}}, \code{\link{augbin_bootstrap}}
 }

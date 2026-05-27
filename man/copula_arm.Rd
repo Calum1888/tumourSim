@@ -4,17 +4,18 @@
 \alias{copula_arm}
 \title{Per-arm copula fit with bootstrap standard error}
 \usage{
-copula_arm(t_events, l_events, grid, family, B, cens_at = Inf)
+copula_arm(t_events, l_events, grid, family = "gumbel", B = 200, cens_at = Inf)
 }
 \arguments{
 \item{t_events, l_events}{Numeric matrices of tumour and lesion event
-indicators (0/1) for one arm.}
+indicators (0/1) for one arm, of identical dimensions.}
 
-\item{grid}{Numeric vector of evaluation times.}
+\item{grid}{Numeric vector of non-negative evaluation times.}
 
-\item{family}{Character copula family.}
+\item{family}{Character copula family passed to \code{\link{fit_copula}}.
+Defaults to \code{"gumbel"}.}
 
-\item{B}{Integer. Number of bootstrap replicates.}
+\item{B}{Integer (>= 1). Number of bootstrap replicates. Defaults to 200.}
 
 \item{cens_at}{Numeric. Administrative censoring cutoff; defaults to
 \code{Inf} (no censoring).}
@@ -22,11 +23,14 @@ indicators (0/1) for one arm.}
 \value{
 A list with elements \code{pfs} (point estimate) and \code{se}
   (bootstrap standard error), each of length \code{length(grid)};
-  \code{NULL} if the fit could not be obtained (e.g. fewer than two
-  events in either marginal).
+  \code{NULL} if the fit could not be obtained (fewer than two events
+  on either margin, or the initial copula fit fails).
 }
 \description{
 Fits a copula-based PFS curve for a single arm and computes pointwise
 bootstrap standard errors. Used by \code{\link{run_copula_power}} for
 two-arm Wald tests on the survival difference at a chosen visit.
+}
+\seealso{
+\code{\link{pfs_copula}}, \code{\link{run_copula_power}}
 }

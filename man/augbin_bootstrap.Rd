@@ -4,33 +4,71 @@
 \alias{augbin_bootstrap}
 \title{Patient-level bootstrap confidence intervals for AugBin PFS}
 \usage{
-augbin_bootstrap(tumour, lesion, treatment, B, threshold = 1.2, alpha = 0.05)
+augbin_bootstrap(
+  tumour,
+  lesion,
+  treatment,
+  B,
+  threshold = 1.2,
+  conf_level = 0.95
+)
 }
 \arguments{
-\item{tumour}{A list with at least \code{log_ratios_vs_baseline}.}
+\item{tumour}{A list as returned by \code{\link{tumour_events}}.}
 
-\item{lesion}{A list with \code{all_tumour_sizes} and \code{events}.}
+\item{lesion}{A list as returned by \code{\link{lesion_events}}.}
 
-\item{treatment}{Numeric vector of length \code{n}.}
+\item{treatment}{Numeric vector of length
+\code{nrow(tumour$log_ratios_vs_baseline)} giving per-patient
+treatment indicators.}
 
-\item{B}{Integer. Number of bootstrap replicates.}
+\item{B}{Integer (>= 1). Number of bootstrap replicates.}
 
-\item{threshold}{Numeric. Tumour progression threshold. Defaults to 1.2.}
+\item{threshold}{Numeric (> 1). Tumour progression threshold. Defaults
+to 1.2.}
 
-\item{alpha}{Numeric in \eqn{(0, 1)}. Nominal two-sided error rate.
-Defaults to 0.05.}
+\item{conf_level}{Numeric in (0, 1). Confidence level for the
+percentile intervals. Defaults to 0.95.}
 }
 \value{
-A list with elements \code{S_boot} (the \code{B x T} matrix of
-  bootstrap PFS curves), \code{lower}, and \code{upper} (numeric
-  vectors of length \code{T} giving the percentile CIs).
+A named list:
+\describe{
+  \item{\code{S_boot}}{A \code{B} x \code{T} matrix where row \code{b}
+    holds the AugBin PFS curve from the \code{b}-th bootstrap replicate.
+    Rows are \code{NA} for replicates that failed.}
+  \item{\code{lower, upper}}{Numeric vectors of length \code{T} giving
+    the \code{conf_level} percentile confidence interval at each visit.}
+  \item{\code{n_failed}}{Integer count of bootstrap replicates that
+    produced degenerate fits.}
+}
 }
 \description{
-Computes pointwise patient-level bootstrap confidence intervals for the
-AugBin PFS estimator using the percentile method.
+Computes pointwise patient-level percentile bootstrap confidence
+intervals for the AugBin PFS estimator. Each replicate resamples
+patients with replacement, refits the tumour-side MVN and lesion-side
+logistic models, and combines them via \eqn{S_T(t) S_D(t)}. Replicates
+that produce degenerate fits (e.g. when the resampled cohort lacks
+variability in lesion outcomes) are recorded as \code{NA} rows and
+excluded from the quantile computation.
 }
-\details{
-Bootstrap replicates that throw errors (e.g. degenerate fits)
-  contribute \code{NA_real_} rows and are excluded from the quantile
-  computation via \code{na.rm = TRUE}.
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(30, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(30, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+
+fit <- augbin_bootstrap(tum, les, treatment = rep(0, 30), B = 20)
+round(rbind(fit$lower, fit$upper), 3)
+
+\donttest{
+# Closer to the simulation-study defaults (B = 200)
+fit_full <- augbin_bootstrap(tum, les, treatment = rep(0, 30), B = 200)
+}
+
+}
+\seealso{
+\code{\link{augbin_estimate}}, \code{\link{pfs_copula_boot}}
 }

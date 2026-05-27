@@ -7,24 +7,50 @@
 augbin_test_pooled(trial, threshold = 1.2)
 }
 \arguments{
-\item{trial}{A two-arm trial list (e.g. from \code{\link{simulate_trial}}).}
+\item{trial}{A two-arm trial list as returned by
+\code{\link{simulate_trial}}.}
 
-\item{threshold}{Numeric. Tumour progression threshold. Defaults to 1.2.}
+\item{threshold}{Numeric (> 1). Tumour progression threshold. Defaults
+to 1.2.}
 }
 \value{
-A scalar p-value, or \code{NA_real_} on numerical failure.
+A scalar two-sided p-value, or \code{NA_real_} on numerical
+  failure (degenerate arm fit, non-positive variance, or no overlapping
+  at-risk visits between arms).
 }
 \description{
 Two-arm test on the pooled discrete-hazard contrast
-\eqn{Z(\tau) = 0.5 \sum_{t=1}^{\tau} (h_1(t) - h_0(t))} with variance
-propagated by the delta method through
-\eqn{\theta \to S \to h \to Z}. Under H_0,
-\eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
+\deqn{Z(\tau) = \tfrac{1}{2} \sum_{t=1}^{\tau} \bigl(h_1(t) - h_0(t)\bigr),}
+with variance propagated by the delta method through
+\eqn{\theta \to S \to h \to Z}. Under the null hypothesis of equal
+arm-specific PFS curves, \eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
 }
 \details{
-The variance combines the three parameter blocks per arm
-  (mean, vech of covariance, lesion coefficients), each weighted by
-  the gradient \eqn{dZ/d\theta = (dS/d\theta) \cdot (dZ/dS)} where
-  \eqn{dZ/dS} is given analytically by \code{\link{gradZ_wrt_S_arm}}.
-  Arms are assumed asymptotically independent.
+The variance combines three parameter blocks per arm (the tumour-side
+mean, the vech of the tumour-side covariance, and the lesion-side
+regression coefficients), each weighted by the chain-rule gradient
+\eqn{dZ/d\theta = (dS/d\theta)(dZ/dS)} with \eqn{dZ/dS} obtained
+analytically. Arms are assumed asymptotically independent, which holds
+under random assignment but not under matched-pair designs.
+}
+\examples{
+set.seed(1)
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5); diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+
+trial <- simulate_trial(80, mu_ctrl, mu_trt, Sigma,
+                        beta_lesion = -0.5, gamma_lesion = 0.2)
+augbin_test_pooled(trial)
+
+}
+\references{
+Lin, C.-J. and Wason, J. (2020). Efficient analysis of time-to-event
+endpoints when the event involves a continuous variable crossing a
+threshold. \emph{Journal of Statistical Planning and Inference}, 208,
+119--129.
+}
+\seealso{
+\code{\link{augbin_test_delta}}, \code{\link{km_logrank_pvalue}},
+  \code{\link{copula_L1_permutation_test}}
 }

@@ -4,34 +4,85 @@
 \alias{pfs_copula}
 \title{Copula-based estimator of progression-free survival}
 \usage{
-pfs_copula(d_time, d_status, y_time, y_status, grid, family = "gumbel")
+pfs_copula(
+  d_time,
+  d_status,
+  y_time,
+  y_status,
+  grid,
+  family = "gumbel",
+  pseudo_obs = c("all", "doubly_observed")
+)
 }
 \arguments{
-\item{d_time, d_status}{Vectors of times and (0/1) event indicators for
-the first endpoint (e.g. new lesion).}
+\item{d_time, d_status}{Numeric and 0/1 vectors giving the observed times
+and event indicators for the lesion (D) endpoint.}
 
-\item{y_time, y_status}{Vectors of times and (0/1) event indicators for
-the second endpoint (e.g. tumour progression).}
+\item{y_time, y_status}{Numeric and 0/1 vectors giving the observed times
+and event indicators for the tumour-progression (Y) endpoint. Paired
+with \code{d_time} and \code{d_status} by patient (one row per
+patient).}
 
-\item{grid}{Numeric vector of time points at which to evaluate PFS.}
+\item{grid}{Numeric vector of non-negative time points at which to
+evaluate the PFS curve.}
 
-\item{family}{Character copula family passed to \code{\link{fit_copula}}.
-Defaults to \code{"gumbel"}.}
+\item{family}{Character. Archimedean copula family, passed to
+\code{\link{fit_copula}}. Defaults to \code{"gumbel"}.}
+
+\item{pseudo_obs}{Character. \code{"all"} (default) fits the copula on
+all patients via Kaplan-Meier pseudo-observations, matching the
+two-step framework of Shih and Louis (1995). \code{"doubly_observed"}
+restricts the fit to patients with both endpoint events observed and
+is included for backwards compatibility.}
 }
 \value{
-A list with elements \code{time} (the input grid), \code{pfs}
-  (estimated survival at each grid point), \code{theta}, \code{aic}, and
-  \code{S_D}, \code{S_Y} (marginal survival evaluated on the grid).
+A named list:
+\describe{
+  \item{\code{time}}{The input \code{grid}.}
+  \item{\code{pfs}}{Estimated PFS at each grid point.}
+  \item{\code{theta}}{Fitted copula dependence parameter.}
+  \item{\code{aic}}{AIC of the fitted copula.}
+  \item{\code{S_D, S_Y}}{Marginal Kaplan-Meier survivals evaluated on
+    \code{grid}.}
+}
 }
 \description{
 Estimates PFS on a user-supplied time grid by combining Kaplan-Meier
 marginal survival functions for the two component endpoints (typically
-new lesion and tumour progression) with a fitted bivariate copula.
+new lesion and tumour progression) with a fitted bivariate Archimedean
+copula, using the survival-copula identity
+\deqn{S_{\mathrm{PFS}}(t) = S_D(t) + S_Y(t) - 1 +
+      C\bigl(1 - S_D(t),\, 1 - S_Y(t);\,\theta\bigr)}
+(Regan, 2026, eq. 4.5). Marginal survivals are estimated by Kaplan-Meier
+and treated as right-continuous step functions. The copula is fit by
+two-step maximum likelihood (Shih and Louis, 1995) on pseudo-observations
+from \code{\link{km_pseudo}}.
 }
-\details{
-Marginal survivals are estimated by Kaplan-Meier and read off
-  as right-continuous step functions. The copula is fit by maximum
-  likelihood on pseudo-observations using only patients with both events
-  observed, then PFS is reconstructed via the inclusion-exclusion
-  identity.
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(80, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(80, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+tum_te <- combined_event(tum$events, matrix(0, nrow = 80, ncol = 5))
+les_te <- combined_event(matrix(0, nrow = 80, ncol = 5), les$events)
+
+fit <- pfs_copula(
+  d_time = les_te$time, d_status = les_te$status,
+  y_time = tum_te$time, y_status = tum_te$status,
+  grid = 1:5
+)
+round(fit$pfs, 3)
+
+}
+\references{
+Shih, J. H. and Louis, T. A. (1995). Inferences on the association
+parameter in copula models for bivariate survival data. \emph{Biometrics},
+51(4), 1384--1399.
+}
+\seealso{
+\code{\link{fit_copula}}, \code{\link{km_pseudo}},
+  \code{\link{pfs_copula_boot}}, \code{\link{augbin_estimate}}
 }

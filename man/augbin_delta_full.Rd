@@ -4,25 +4,23 @@
 \alias{augbin_delta_full}
 \title{Per-arm AugBin delta-method standard errors for S_PFS(t)}
 \usage{
-augbin_delta_full(tumour, lesion, treatment, threshold = 1.2, eps = 0.001)
+augbin_delta_full(tumour, lesion, treatment, threshold = 1.2, fd_step = 0.001)
 }
 \arguments{
-\item{tumour}{A list with \code{log_ratios_vs_baseline}.}
+\item{tumour, lesion, treatment, threshold}{As in \code{\link{augbin_estimate}}.}
 
-\item{lesion}{A list with \code{events} and \code{all_tumour_sizes}.}
-
-\item{treatment}{Numeric vector of length \code{n}.}
-
-\item{threshold}{Numeric. Tumour progression threshold. Defaults to 1.2.}
-
-\item{eps}{Numeric. Finite-difference step. Defaults to 1e-3.}
+\item{fd_step}{Numeric finite-difference step for the gradient blocks.
+Defaults to \code{1e-3}.}
 }
 \value{
-A list with elements \code{S_pfs} and \code{se}, each of
-  length \code{T}.
+A list with \code{S_pfs} (numeric vector of length \code{T}) and
+  \code{se} (numeric vector of length \code{T} of delta-method standard
+  errors).
 }
 \description{
-Computes the AugBin PFS curve and its pointwise delta-method standard
-errors on a single arm by combining the parameter-block gradients and
-covariances returned by \code{\link{augbin_fit_with_grads}}.
+Internal helper. Given a fitted AugBin model and its gradient blocks
+from \code{\link{augbin_fit_with_grads}}, returns the per-visit PFS
+estimates together with delta-method standard errors. Used by
+\code{\link{augbin_test_delta}} and \code{\link{augbin_test_pooled}}.
 }
+\keyword{internal}

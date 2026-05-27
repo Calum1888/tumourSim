@@ -2,14 +2,14 @@
 % Please edit documentation in R/KM.R
 \name{true_pfs}
 \alias{true_pfs}
-\title{Approximate the true PFS curve by large-sample Monte Carlo}
+\title{Monte Carlo approximation of the true progression-free survival curve}
 \usage{
 true_pfs(
   grid,
-  n_big = 1e+05,
-  mean,
+  mu,
   covariance,
   threshold,
+  n_big = 1e+05,
   alpha = -2.5,
   beta = 0,
   gamma = 0.2,
@@ -17,28 +17,54 @@ true_pfs(
 )
 }
 \arguments{
-\item{grid}{Numeric vector of time points at which to evaluate the true
-PFS curve.}
+\item{grid}{Numeric vector of non-negative time points at which to
+evaluate the true PFS curve.}
+
+\item{mu}{Numeric vector of length \code{T} giving the tumour log-ratio
+mean, passed to \code{\link{tumour_events}}.}
+
+\item{covariance}{Numeric \code{T} x \code{T} covariance matrix for the
+tumour trajectory, passed to \code{\link{tumour_events}}.}
+
+\item{threshold}{Numeric (> 1). Multiplicative tumour-progression
+threshold, passed to \code{\link{tumour_events}}.}
 
 \item{n_big}{Integer. Size of the simulated cohort. Defaults to
-\code{1e5}; the Monte Carlo error in the truth is
-\eqn{O(1/\sqrt{n_{\mathrm{big}}})}.}
+\code{1e5}.}
 
-\item{mean, covariance, threshold}{Parameters of the tumour model passed
-to \code{\link{tumour_events}}.}
-
-\item{alpha, beta, gamma, treatment_arm}{Parameters of the lesion model
-passed to \code{\link{lesion_events}}. Defaults give the
-single-arm baseline used in the included scenarios.}
+\item{alpha, beta, gamma, treatment_arm}{Lesion-model coefficients passed
+to \code{\link{lesion_events}}. Defaults give the single-arm baseline
+used in the simulation studies of Regan (2026).}
 }
 \value{
-A numeric vector of length \code{length(grid)} giving Monte Carlo
-  approximations of true PFS at each grid point.
+A numeric vector of length \code{length(grid)} giving the Monte
+  Carlo approximation of true PFS at each grid point. Grid points beyond
+  the largest simulated event time take the value of the survival
+  function at the rightmost observed time (\code{extend = TRUE}).
 }
 \description{
-Approximates the true progression-free survival curve under the
-data-generating model by simulating a very large single-arm cohort and
-applying Kaplan-Meier to the composite endpoint. Used as ground truth
-for coverage and bias evaluation in
-\code{\link{simulate_metrics_all}}.
+Approximates the true PFS curve under the data-generating model by
+simulating a large single-arm cohort and applying Kaplan-Meier to the
+composite tumour-plus-lesion endpoint. The result is used as ground
+truth for coverage and bias evaluation in
+\code{\link{simulate_metrics_all}}. Monte Carlo error decays as
+\eqn{O(1/\sqrt{n_{\mathrm{big}}})}, so for accuracy at the third decimal
+place use \code{n_big} of order \eqn{10^5} or larger.
+}
+\examples{
+\donttest{
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+
+# Small n_big for example speed; use 1e5 in practice
+set.seed(1)
+s <- true_pfs(grid = 1:5, mu = mu, covariance = Sigma,
+              threshold = 1.2, n_big = 2000)
+round(s, 3)
+}
+
+}
+\seealso{
+\code{\link{tumour_events}}, \code{\link{lesion_events}},
+  \code{\link{combined_event}}, \code{\link{simulate_metrics_all}}
 }

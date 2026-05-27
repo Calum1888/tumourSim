@@ -4,21 +4,48 @@
 \alias{fit_copula}
 \title{Fit a one-parameter Archimedean copula by maximum likelihood}
 \usage{
-fit_copula(u, v, family = c("clayton", "frank", "gumbel"))
+fit_copula(u, v, family = c("gumbel", "clayton", "frank"))
 }
 \arguments{
 \item{u, v}{Numeric vectors of pseudo-observations in \eqn{(0, 1)}, of
-equal length.}
+equal length (at least 2).}
 
-\item{family}{Character. One of \code{"clayton"}, \code{"frank"}, or
-\code{"gumbel"}. Defaults to \code{"clayton"}.}
+\item{family}{Character. One of \code{"gumbel"} (default; identified in
+Regan (2026) as the most appropriate copula for RECIST PFS endpoints),
+\code{"clayton"}, or \code{"frank"}.}
 }
 \value{
-A list with elements \code{theta} (estimated dependence parameter),
-  \code{copula} (fitted \code{copula} object), \code{family}, and
-  \code{aic}.
+A named list:
+\describe{
+  \item{\code{theta}}{Numeric scalar. The estimated dependence
+    parameter.}
+  \item{\code{copula}}{The fitted S4 \code{copula} object, suitable for
+    passing to \code{\link[copula]{pCopula}}.}
+  \item{\code{family}}{Character. The fitted family (echoes the input).}
+  \item{\code{aic}}{Numeric. Akaike information criterion.}
+  \item{\code{loglik}}{Numeric. Maximised log-likelihood.}
+}
 }
 \description{
 Fits a Clayton, Frank, or Gumbel copula to a pair of pseudo-observations
-on \eqn{(0,1)^2} by maximum likelihood.
+on \eqn{(0, 1)^2} by maximum likelihood. Pseudo-observations are typically
+obtained from \code{\link{km_pseudo}} applied to right-censored marginal
+time-to-event data.
+}
+\examples{
+set.seed(1)
+# Simulate dependent pseudo-observations from a Gumbel copula
+true_cop <- copula::gumbelCopula(param = 1.5, dim = 2)
+uv <- copula::rCopula(200, true_cop)
+
+fit <- fit_copula(uv[, 1], uv[, 2], family = "gumbel")
+c(theta = fit$theta, aic = fit$aic)
+
+}
+\references{
+Hofert, M., Kojadinovic, I., Maechler, M., and Yan, J. (2018).
+\emph{Elements of Copula Modeling with R}. Springer.
+}
+\seealso{
+\code{\link{km_pseudo}}, \code{\link{pfs_copula}}
 }

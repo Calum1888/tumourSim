@@ -4,21 +4,52 @@
 \alias{augbin_test_delta}
 \title{AugBin delta-method Wald test at the final visit}
 \usage{
-augbin_test_delta(trial, threshold = 1.2)
+augbin_test_delta(trial, threshold = 1.2, eps = 1e-06)
 }
 \arguments{
-\item{trial}{A two-arm trial list (e.g. from \code{\link{simulate_trial}}).}
+\item{trial}{A two-arm trial list as returned by
+\code{\link{simulate_trial}}.}
 
-\item{threshold}{Numeric. Tumour progression threshold. Defaults to 1.2.}
+\item{threshold}{Numeric (> 1). Tumour progression threshold. Defaults
+to 1.2.}
+
+\item{eps}{Numeric in (0, 0.5). Boundary tolerance: if either arm's
+final-visit survival estimate falls within \code{eps} of 0 or 1, the
+test returns \code{NA_real_}. Defaults to \code{1e-6}.}
 }
 \value{
-A scalar p-value, or \code{NA_real_} on numerical failure.
+A scalar two-sided p-value, or \code{NA_real_} on numerical
+  failure (degenerate arm fit, boundary survival estimate, or
+  non-positive variance).
 }
 \description{
 Two-arm Wald test on the log-ratio of treatment-to-control PFS at the
-final visit:
-\eqn{Z = 0.5 (\log S_0(T) - \log S_1(T))},
-\eqn{\mathrm{Var}(Z) = 0.25 (\mathrm{Var}(S_0)/S_0^2 + \mathrm{Var}(S_1)/S_1^2)},
-with arm-specific variances from \code{\link{augbin_delta_full}}.
-Under H_0, \eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
+final visit, with arm-specific variances obtained from
+\code{\link{augbin_delta_full}}. The test statistic is
+\deqn{Z = \log S_0(T) - \log S_1(T),
+  \quad
+  \mathrm{Var}(Z) = \frac{\mathrm{Var}(S_0(T))}{S_0(T)^2} +
+                    \frac{\mathrm{Var}(S_1(T))}{S_1(T)^2},}
+and under the null hypothesis of equal final-visit survival,
+\eqn{Z^2 / \mathrm{Var}(Z) \sim \chi^2_1}.
+}
+\details{
+This test compares survival only at the final visit. For a test that
+aggregates information across all visits via a pooled hazard contrast,
+see \code{\link{augbin_test_pooled}}.
+}
+\examples{
+set.seed(1)
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5); diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+
+trial <- simulate_trial(80, mu_ctrl, mu_trt, Sigma,
+                        beta_lesion = -0.5, gamma_lesion = 0.2)
+augbin_test_delta(trial)
+
+}
+\seealso{
+\code{\link{augbin_test_pooled}}, \code{\link{augbin_estimate}},
+  \code{\link{km_logrank_pvalue}}
 }
