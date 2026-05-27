@@ -6,8 +6,8 @@
 \usage{
 simulate_trial(
   n_per_arm,
-  mean_ctrl,
-  mean_trt,
+  mu_ctrl,
+  mu_trt,
   cov_mat,
   threshold = 1.2,
   alpha_lesion = -2.5,
@@ -15,30 +15,33 @@ simulate_trial(
   gamma_lesion = 0.2,
   gamma_lesion_ctrl = NULL,
   gamma_lesion_trt = NULL,
-  tumour_dist = "mvnorm",
+  tumour_dist = c("mvnorm", "mvt"),
   tumour_df = 4,
-  lesion_link = "logit",
+  lesion_link = c("logit", "probit"),
   lesion_nonlinear = FALSE
 )
 }
 \arguments{
 \item{n_per_arm}{Integer. Number of patients in each arm.}
 
-\item{mean_ctrl, mean_trt}{Numeric vectors of length \code{T} giving the
+\item{mu_ctrl, mu_trt}{Numeric vectors of length \code{T} giving the
 tumour-size log-ratio means for control and treatment arms.}
 
 \item{cov_mat}{Numeric \code{T} x \code{T} covariance matrix for the
-tumour trajectory, shared by both arms.}
+tumour trajectory, shared by both arms. For arm-specific covariances,
+call \code{\link{tumour_events}} and \code{\link{lesion_events}}
+directly.}
 
 \item{threshold}{Numeric (> 1). Multiplicative tumour-progression
-threshold passed to \code{\link{tumour_events}}. Defaults to 1.2.}
+threshold. Defaults to 1.2 (RECIST v1.1).}
 
 \item{alpha_lesion, beta_lesion, gamma_lesion}{Lesion-model coefficients
-passed to \code{\link{lesion_events}}.}
+passed to \code{\link{lesion_events}}. \code{beta_lesion} is the
+treatment-arm coefficient (control arm coded as 0, treatment arm as 1).}
 
 \item{gamma_lesion_ctrl, gamma_lesion_trt}{Optional per-arm overrides for
-the tumour-to-lesion coefficient. If \code{NULL}, both arms use
-\code{gamma_lesion}.}
+the tumour-to-lesion coefficient. When non-\code{NULL}, these take
+precedence over \code{gamma_lesion} for the respective arm.}
 
 \item{tumour_dist, tumour_df}{Tumour-distribution arguments passed to
 \code{\link{tumour_events}}.}
@@ -53,7 +56,53 @@ A list with elements \code{ctrl} and \code{trt}, each containing
 }
 \description{
 Convenience wrapper that simulates control and treatment arms under the
-same data-generating process (with optional arm-specific tumour means
-and dependence parameters) and returns the per-arm tumour and lesion
-simulation outputs in a single nested list.
+same data-generating process and returns the per-arm tumour and lesion
+simulation outputs in a single nested list. Tumour log-ratios are drawn
+with arm-specific means \code{mu_ctrl} and \code{mu_trt} but a shared
+covariance matrix; lesion events are then generated conditional on the
+tumour trajectory in each arm. Setting \code{gamma_lesion_ctrl} and
+\code{gamma_lesion_trt} separately allows the tumour-to-lesion coupling
+to differ between arms, which is the structure used to study power under
+arm-asymmetric dependence in Regan (2026, Section 5.2.2).
+}
+\examples{
+set.seed(1)
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+
+# Scenario 1 from Regan (2026): null treatment effect, no dependence
+trial <- simulate_trial(
+  n_per_arm    = 50,
+  mu_ctrl      = mu_ctrl,
+  mu_trt       = mu_trt,
+  cov_mat      = Sigma,
+  beta_lesion  = 0,
+  gamma_lesion = 0
+)
+str(trial, max.level = 2)
+
+\donttest{
+# Scenario 6: asymmetric dependence, small treatment effect
+trial2 <- simulate_trial(
+  n_per_arm         = 200,
+  mu_ctrl           = mu_ctrl,
+  mu_trt            = mu_trt,
+  cov_mat           = Sigma,
+  beta_lesion       = -0.5,
+  gamma_lesion_ctrl = 1.0,
+  gamma_lesion_trt  = 0.2
+)
+}
+
+}
+\references{
+Regan, C. (2026). \emph{Copula Modelling for Mixed Continuous and Binary
+Variables in Survival Analysis: Applications to Colorectal Cancer}.
+MMath dissertation.
+}
+\seealso{
+\code{\link{tumour_events}}, \code{\link{lesion_events}},
+  \code{\link{pfs_copula}}
 }

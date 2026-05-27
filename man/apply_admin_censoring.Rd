@@ -4,23 +4,45 @@
 \alias{apply_admin_censoring}
 \title{Apply administrative censoring at a cutoff visit}
 \usage{
-apply_admin_censoring(ce, cens_at)
+apply_admin_censoring(data, cens_at)
 }
 \arguments{
-\item{ce}{A \code{data.frame} with columns \code{time} and \code{status}
-(e.g. as returned by \code{\link{combined_event}} or
-\code{\link{find_event_time}}).}
+\item{data}{A \code{data.frame} with columns \code{time} and
+\code{status}, e.g. as returned by \code{\link{combined_event}} or
+\code{\link{first_event_times}}.}
 
-\item{cens_at}{Numeric cutoff visit. If \code{NULL} or \code{Inf}, the
-input is returned unchanged.}
+\item{cens_at}{Numeric cutoff. Observations with \code{time > cens_at}
+have their \code{status} set to 0 and \code{time} replaced by
+\code{cens_at}. If \code{NULL} or \code{Inf}, \code{data} is returned
+unchanged.}
 }
 \value{
-The input data frame with \code{time} capped at \code{cens_at}
-  and \code{status} set to 0 for any event after the cutoff.
+A data frame of the same shape as \code{data}, with \code{time}
+  capped at \code{cens_at} and \code{status} set to 0 for any event
+  after the cutoff.
 }
 \description{
 Truncates a composite (\code{time}, \code{status}) data frame at a
 user-specified administrative cutoff: events occurring strictly after
 \code{cens_at} are marked as censored at \code{cens_at}. Useful for
-simulating short follow-up scenarios.
+simulating short-follow-up scenarios or sensitivity analyses where the
+study is treated as if it had ended earlier than the simulated horizon.
+}
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+pfs <- combined_event(tum$events, les$events)
+
+# Censor at visit 3
+pfs_short <- apply_admin_censoring(pfs, cens_at = 3)
+table(pfs$status, pfs_short$status)
+
+}
+\seealso{
+\code{\link{combined_event}}
 }

@@ -4,22 +4,16 @@
 \alias{first_event_times}
 \title{Convert paired tumour and lesion event matrices to a composite (time, status) table}
 \usage{
-first_event_times(tumour_events_mat, lesion_events_mat)
+first_event_times(tumour, lesion)
 }
 \arguments{
-\item{tumour_events_mat}{Numeric \code{n_patients} x \code{T} matrix of
-tumour event indicators (0/1).}
-
-\item{lesion_events_mat}{Numeric \code{n_patients} x \code{T} matrix of
-lesion event indicators (0/1).}
+\item{tumour, lesion}{Event-indicator matrices of identical dimension.}
 }
 \value{
-A \code{data.frame} with columns \code{time} and \code{status}.
+A data frame as in \code{\link{combined_event}}.
 }
 \description{
-Loop-based implementation of \code{\link{combined_event}} that does not
-assume both matrices have identical dimensions. Used internally by the
-two-arm power simulators where tumour and lesion events arrive as
-separate matrices and the composite endpoint is needed alongside the
-per-endpoint endpoints.
+Internal alias for \code{\link{combined_event}}; retained for backwards
+compatibility within the package's internals.
 }
+\keyword{internal}

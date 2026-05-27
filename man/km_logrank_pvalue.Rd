@@ -12,11 +12,30 @@ with \code{ctrl} and \code{trt} components each containing
 \code{tumour$events} and \code{lesion$events}.}
 }
 \value{
-A scalar p-value from \code{\link[survival]{survdiff}} on the
-  log-rank chi-squared statistic with 1 degree of freedom.
+A scalar two-sided p-value for the null hypothesis that the
+  composite PFS curves are equal between arms, computed from the log-rank
+  chi-squared statistic on 1 degree of freedom via
+  \code{\link[survival]{survdiff}}.
 }
 \description{
 Computes the log-rank p-value for a treatment-vs-control comparison on
-the composite first-event time built from tumour and lesion events.
-Used as the Kaplan-Meier baseline in power studies.
+the composite first-event time built from tumour progression and new
+lesion events. Provides the Kaplan-Meier baseline against which the
+copula-based permutation test is benchmarked in
+\code{\link{run_all_scenarios}}.
+}
+\examples{
+set.seed(1)
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5); diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+
+trial <- simulate_trial(50, mu_ctrl, mu_trt, Sigma,
+                        beta_lesion = -0.5, gamma_lesion = 0.2)
+km_logrank_pvalue(trial)
+
+}
+\seealso{
+\code{\link{copula_L1_permutation_test}},
+  \code{\link{simulate_trial}}
 }

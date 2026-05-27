@@ -4,27 +4,52 @@
 \alias{combined_event}
 \title{Combine tumour and lesion events into a composite time-to-event outcome}
 \usage{
-combined_event(lesion_events, tumour_events)
+combined_event(tumour, lesion)
 }
 \arguments{
-\item{lesion_events}{Numeric \code{n_patients} x \code{T} matrix of lesion
-event indicators (0/1), e.g. the \code{events} component of
-\code{\link{lesion_events}}. \code{NA} values are treated as non-events.}
+\item{tumour}{Numeric \code{n_patients} x \code{T} matrix of tumour event
+indicators, with the same dimensions as \code{lesion}, typically the
+\code{events} component returned by \code{\link{tumour_events}}.}
 
-\item{tumour_events}{Numeric \code{n_patients} x \code{T} matrix of tumour
-event indicators (0/1), with the same dimensions as \code{lesion_events}.}
+\item{lesion}{Numeric \code{n_patients} x \code{T} matrix of lesion event
+indicators (0/1), typically the \code{events} component returned by
+\code{\link{lesion_events}}.}
 }
 \value{
 A \code{data.frame} with \code{n_patients} rows and two columns:
 \describe{
   \item{\code{time}}{Integer visit index of the first event of either
-    type, or \code{ncol(tumour_events)} if no event occurs.}
+    type, or \code{ncol(tumour)} if no event occurs.}
   \item{\code{status}}{Integer (0/1) event indicator; 0 if censored.}
 }
 }
 \description{
-Combines two event-indicator matrices (one for tumour progression and one
-for new lesions) into a single time-to-first-event outcome per patient,
-defined as the earliest visit at which either event occurs. Patients with
-no event by the final visit are administratively censored.
+Combines two event-indicator matrices into a single time-to-first-event
+outcome per patient, defined as the earliest visit at which either a
+tumour progression or a new lesion event occurs. This is the standard
+RECIST composite progression-free survival (PFS) endpoint. Patients with
+no event by the final visit are administratively censored at the last
+visit.
+}
+\details{
+\code{NA} entries (post-event censoring rows produced by
+\code{\link{tumour_events}} and \code{\link{lesion_events}}) are skipped
+when finding the first event in each row.
+}
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+pfs <- combined_event(tum$events, les$events)
+head(pfs)
+table(pfs$status)
+
+}
+\seealso{
+\code{\link{tumour_events}}, \code{\link{lesion_events}},
+  \code{\link{first_event_times}}
 }

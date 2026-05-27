@@ -11,7 +11,8 @@ lesion_events(
   beta,
   gamma,
   treatment_arm,
-  link = "logit",
+  baseline = runif(n_patients, 0, 1),
+  link = c("logit", "probit"),
   nonlinear = FALSE
 )
 }
@@ -23,32 +24,37 @@ of tumour size versus baseline, typically the
 \code{log_ratios_vs_baseline} element of \code{\link{tumour_events}}.}
 
 \item{alpha}{Numeric scalar or vector of length \code{T}. Intercept of the
-linear predictor at each visit. Recycled to length \code{T}.}
+linear predictor at each visit. A scalar is recycled to length \code{T};
+any other length must equal \code{T}.}
 
 \item{beta}{Numeric scalar or vector of length \code{T}. Treatment-arm
-coefficient at each visit. Recycled to length \code{T}.}
+coefficient at each visit. Recycled as for \code{alpha}.}
 
 \item{gamma}{Numeric scalar or vector of length \code{T}. Coefficient on
-the lagged tumour size at each visit. Recycled to length \code{T}.}
+the lagged tumour size at each visit. Recycled as for \code{alpha}.}
 
 \item{treatment_arm}{Numeric scalar or vector of length \code{n_patients}.
-Treatment-arm indicator (typically 0/1). Recycled to length
+Treatment-arm indicator (typically 0/1). A scalar is recycled to length
 \code{n_patients}.}
+
+\item{baseline}{Numeric vector of length \code{n_patients} giving baseline
+tumour sizes. Defaults to \code{runif(n_patients, 0, 1)}, matching the
+convention used in the simulation studies of Regan (2026).}
 
 \item{link}{Character. Either \code{"logit"} (default) or \code{"probit"}.}
 
 \item{nonlinear}{Logical. If \code{TRUE}, the tumour-size effect enters
-the linear predictor as \code{tumour_lag^2} instead of \code{tumour_lag}
-(useful for misspecification studies). Defaults to \code{FALSE}.}
+the linear predictor as \eqn{z_{i,t-1}^2} instead of \eqn{z_{i,t-1}}.
+Defaults to \code{FALSE}.}
 }
 \value{
 A named list with three elements:
 \describe{
   \item{\code{all_tumour_sizes}}{An \code{n_patients} x \code{(T+1)} matrix
-    of absolute tumour sizes, with the (Uniform(0,1)) baseline size in the
-    first column.}
+    of tumour sizes on the original scale, with baseline in the first
+    column.}
   \item{\code{lesion_probability}}{An \code{n_patients} x \code{T} matrix
-    of per-visit lesion probabilities from the linear predictor.}
+    of per-visit lesion probabilities.}
   \item{\code{events}}{An \code{n_patients} x \code{T} matrix of lesion
     event indicators (0/1), with \code{NA} for visits strictly after the
     first event.}
@@ -56,14 +62,31 @@ A named list with three elements:
 }
 \description{
 Simulates the occurrence of new lesions over time as Bernoulli events
-whose probability depends on treatment arm and the lagged (previous-visit)
-tumour size through a logistic (or probit) linear predictor. Visits after
-the first lesion event are censored (set to \code{NA}).
+whose probability at visit \eqn{t} depends on treatment arm and the lagged
+(previous-visit) tumour size through a logistic or probit linear predictor
+\deqn{\eta_{it} = \alpha_t + \beta_t \, \mathrm{arm}_i + \gamma_t \, z_{i,t-1},}
+with \eqn{p_{it} = g^{-1}(\eta_{it})}. Setting \code{nonlinear = TRUE}
+replaces \eqn{z_{i,t-1}} with \eqn{z_{i,t-1}^2}, which is useful for
+studying robustness to model misspecification. Visits strictly after the
+first lesion event are censored to \code{NA}.
 }
-\details{
-The linear predictor at visit \eqn{t} for patient \eqn{i} is
-  \eqn{\eta_{it} = \alpha_t + \beta_t \cdot \mathrm{arm}_i + \gamma_t \cdot z_{i,t-1}}
-  (or \eqn{\gamma_t \cdot z_{i,t-1}^2} when \code{nonlinear = TRUE}). The
-  lesion probability is then \eqn{p_{it} = g^{-1}(\eta_{it})} with
-  \eqn{g^{-1}} the logistic or normal CDF.
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(20, mu = mu, covariance = Sigma, threshold = 1.2)
+
+les <- lesion_events(
+  n_patients   = 20,
+  log_tumour   = tum$log_ratios_vs_baseline,
+  alpha        = -2.5,
+  beta         = 0,
+  gamma        = 0.2,
+  treatment_arm = rep(0, 20)
+)
+colMeans(les$events == 1, na.rm = TRUE)
+
+}
+\seealso{
+\code{\link{tumour_events}}, \code{\link{simulate_trial}}
 }

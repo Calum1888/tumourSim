@@ -6,7 +6,15 @@
 \alias{tumourSim-package}
 \title{tumourSim: Simulation Tools for Tumour Progression Models}
 \description{
-Simulation framework for log tumour size ratios and lesion probabilities. The true survival rates, Kaplan-Meier Augbin and Copula estimated survival rates and metrics are calculated.
+Simulates and analyses progression-free survival in oncology trials that follow the Response Evaluation Criteria in Solid Tumours (RECIST) framework of Eisenhauer et al. (2009) \doi{10.1016/j.ejca.2008.10.026}, in which a patient progresses when either the sum of the longest tumour diameters crosses a threshold or a new lesion appears. Generates longitudinal log tumour size ratios from a multivariate normal or multivariate t distribution and binary new-lesion indicators from a logistic regression model, then estimates the joint progression-free survival function via three approaches: the Kaplan-Meier estimator of Kaplan and Meier (1958) \doi{10.1080/01621459.1958.10501452}, the augmented-binary method of Lin and Wason (2020) \doi{10.1016/j.jspi.2020.01.005}, and a copula-based estimator that glues Kaplan-Meier marginals for tumour and lesion failure times with a fitted Archimedean (Clayton, Frank, or Gumbel) survival copula via Sklar's identity. Provides bootstrap confidence intervals, a permutation test on the integrated L1 distance between arm-specific survival curves for two-arm comparisons, and utilities for power simulation across user-specified scenarios. Suitable for designing and evaluating RECIST endpoints when tumour growth and new lesion appearance may be dependent.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/Calum1888/tumourSim}
+  \item Report bugs at \url{https://github.com/Calum1888/tumourSim/issues}
+}
+
 }
 \author{
 \strong{Maintainer}: Calum Regan \email{c_regan1888@outlook.com}

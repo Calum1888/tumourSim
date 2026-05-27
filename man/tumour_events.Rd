@@ -4,26 +4,31 @@
 \alias{tumour_events}
 \title{Simulate longitudinal tumour progression events}
 \usage{
-tumour_events(n_patients, mean, covariance, threshold, dist = "mvnorm", df = 4)
+tumour_events(
+  n_patients,
+  mu,
+  covariance,
+  threshold,
+  dist = c("mvnorm", "mvt"),
+  df = 4
+)
 }
 \arguments{
 \item{n_patients}{Integer. Number of patients to simulate.}
 
-\item{mean}{Numeric vector of length \code{T} giving the mean of the
-multivariate distribution for \eqn{Y_t = \log(z_t / z_0)}, the log-ratio
-of tumour size at visit \eqn{t} relative to baseline, for visits
-\eqn{t = 1, \ldots, T}.}
+\item{mu}{Numeric vector of length \code{T} giving the mean of the
+multivariate distribution of \eqn{Y_{1:T}}.}
 
-\item{covariance}{Numeric \code{T} x \code{T} covariance (or scale) matrix.}
+\item{covariance}{Numeric symmetric positive-definite \code{T} x \code{T}
+covariance (or scale) matrix.}
 
-\item{threshold}{Numeric (> 1). Multiplicative threshold on tumour size
-relative to the running nadir. An event occurs at visit \eqn{t} if
-\eqn{z_t / \mathrm{nadir}_{<t} > \mathrm{threshold}}.}
+\item{threshold}{Numeric (> 1). Multiplicative progression threshold on
+tumour size relative to the running nadir. The RECIST default
+corresponds to \code{threshold = 1.2}.}
 
 \item{dist}{Character. Either \code{"mvnorm"} (default) for a multivariate
 normal log-ratio distribution, or \code{"mvt"} for a shifted
-multivariate-t distribution (useful for studying robustness to
-heavy-tailed tumour trajectories).}
+multivariate-t distribution.}
 
 \item{df}{Integer. Degrees of freedom for the multivariate-t distribution.
 Ignored when \code{dist = "mvnorm"}. Defaults to 4.}
@@ -41,15 +46,35 @@ A named list with three elements:
 }
 }
 \description{
-Simulates tumour progression events for a cohort of patients based on
-multivariate-normal (or multivariate-t) log-ratios of tumour size versus
-baseline. An event is declared at the first visit where the tumour size
-exceeds the running nadir (minimum prior tumour size) by a multiplicative
-factor greater than \code{threshold}. Visits after the first event are
-censored (set to \code{NA}).
+Simulates tumour progression events for a cohort of patients under the
+RECIST framework. Log tumour sizes relative to baseline,
+\eqn{Y_t = \log(z_t / z_0)} for visits \eqn{t = 1, \ldots, T}, are drawn
+from a multivariate normal or (for heavy-tailed robustness studies) a
+shifted multivariate-t distribution. A progression event is declared at
+the first visit where \eqn{z_t} exceeds the running nadir
+\eqn{\min(z_0, \ldots, z_{t-1})} by a multiplicative factor greater than
+\code{threshold}; visits strictly after the first event are censored to
+\code{NA}. The baseline log-ratio is fixed at zero by construction.
 }
-\details{
-The baseline log-ratio is fixed at zero by construction
-  (\eqn{Y_0 = 0}), and the running nadir at visit \eqn{t} is taken over
-  visits \eqn{0, 1, \ldots, t-1}.
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+sim   <- tumour_events(n_patients = 20, mu = mu, covariance = Sigma,
+                       threshold = 1.2)
+head(sim$events)
+
+# Heavy-tailed alternative for robustness studies
+sim_t <- tumour_events(n_patients = 20, mu = mu, covariance = Sigma,
+                       threshold = 1.2, dist = "mvt", df = 4)
+colMeans(sim_t$events == 1, na.rm = TRUE)
+
+}
+\references{
+Eisenhauer, E. A. et al. (2009). New response evaluation criteria in solid
+tumours: revised RECIST guideline (version 1.1). \emph{European Journal
+of Cancer}, 45(2), 228--247. \doi{10.1016/j.ejca.2008.10.026}
+}
+\seealso{
+\code{\link{lesion_events}}, \code{\link{simulate_trial}}
 }

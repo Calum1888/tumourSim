@@ -2,24 +2,61 @@
 % Please edit documentation in R/KM.R
 \name{km_pseudo}
 \alias{km_pseudo}
-\title{Kaplan-Meier pseudo-observations of the marginal CDF}
+\title{Probability-integral transform via Kaplan-Meier marginals}
 \usage{
-km_pseudo(time, status)
+km_pseudo(time, status, eps = 1e-06)
 }
 \arguments{
 \item{time}{Numeric vector of observed event or censoring times.}
 
 \item{status}{Integer vector (0/1) of event indicators of the same length
-as \code{time}.}
+as \code{time}; 1 indicates an event, 0 censoring.}
+
+\item{eps}{Numeric in (0, 0.5). Truncation tolerance; returned values are
+clipped to \eqn{[\code{eps}, 1 - \code{eps}]} to avoid boundary
+problems in copula likelihoods. Defaults to \code{1e-6}.}
 }
 \value{
-A numeric vector of pseudo-observations, truncated to the open
-  interval \eqn{[10^{-6}, 1 - 10^{-6}]} to avoid boundary issues in
-  downstream copula fitting.
+A numeric vector of length \code{length(time)} with values in
+  \eqn{[\code{eps}, 1 - \code{eps}]}.
 }
 \description{
-Computes pseudo-observations on the (0, 1) scale by evaluating the
-Kaplan-Meier estimate of the marginal CDF \eqn{F(t) = 1 - S(t)} at each
-observed event or censoring time. These pseudo-observations are used as
-marginal inputs to bivariate copula fits in \code{\link{pfs_copula}}.
+Computes pseudo-observations on the open unit interval by evaluating the
+Kaplan-Meier estimate of the marginal cumulative distribution function
+\eqn{F(t) = 1 - S(t)} at each observed time. These are marginal inputs to
+bivariate copula fits in the two-step estimation scheme of Shih and Louis
+(1995), used internally by \code{\link{fit_copula}} and
+\code{\link{pfs_copula}}.
+}
+\details{
+These are pseudo-observations in the copula sense of Genest, Ghoudi, and
+Rivest (1995) - rank-based uniformised marginals for a parametric copula
+likelihood - not the jackknife pseudo-observations of Andersen, Klein,
+and Rosthoj.
+
+When all observations are censored, every returned value
+  collapses to \code{eps}; the downstream copula fit will be
+  uninformative.
+}
+\examples{
+set.seed(1)
+mu    <- c(0.00, 0.04, 0.07, 0.11, 0.14)
+Sigma <- diag(c(0.25, 0.45, 0.50, 0.75, 1.00))
+tum   <- tumour_events(50, mu = mu, covariance = Sigma, threshold = 1.2)
+les   <- lesion_events(50, tum$log_ratios_vs_baseline,
+                       alpha = -2.5, beta = 0, gamma = 0.2,
+                       treatment_arm = 0)
+pfs <- combined_event(tum$events, les$events)
+u   <- km_pseudo(pfs$time, pfs$status)
+summary(u)
+
+}
+\references{
+Shih, J. H. and Louis, T. A. (1995). Inferences on the association
+parameter in copula models for bivariate survival data. \emph{Biometrics},
+51(4), 1384--1399.
+
+Genest, C., Ghoudi, K., and Rivest, L.-P. (1995). A semiparametric
+estimation procedure of dependence parameters in multivariate families of
+distributions. \emph{Biometrika}, 82(3), 543--552.
 }
