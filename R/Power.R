@@ -113,11 +113,11 @@ run_power_study <- function(scenarios, defaults, M = 1000, n_per_arm = 150,
 
   for (s_name in names(scenarios)) {
     s <- scenarios[[s_name]]
-    if (verbose) cat(sprintf("\n--- %s ---\n", s$label))
+    if (verbose) message(sprintf("\n--- %s ---\n", s$label))
 
     pvals <- numeric(M)
     for (m in seq_len(M)) {
-      if (verbose && m %% 200 == 0) cat("  rep", m, "/", M, "\n")
+      if (verbose && m %% 200 == 0) message("  rep", m, "/", M, "\n")
       pvals[m] <- simulate_one_trial(s, n_per_arm, defaults)
     }
 
@@ -250,14 +250,16 @@ run_copula_power <- function(scenarios, defaults,
 
   for (s_name in names(scenarios)) {
     s <- scenarios[[s_name]]
-    if (verbose) cat(sprintf("\n--- %s ---\n", s$label))
+    if (verbose) message(sprintf("\n--- %s ---\n", s$label))
 
     cl <- if (n_cores > 1) makeCluster(n_cores) else NULL
     if (!is.null(cl)) {
       on.exit(try(stopCluster(cl), silent = TRUE), add = TRUE)
       clusterEvalQ(cl, {
-        library(MASS); library(mvtnorm); library(survival); library(copula)
-        library(tumourSim)
+        requireNamespace("MASS", quietly = TRUE)
+        requireNamespace("mvtnorm", quietly = TRUE)
+        requireNamespace("survival", quietly = TRUE)
+        requireNamespace("copula", quietly = TRUE)
       })
       clusterExport(cl,
                     varlist = c("s", "n_per_arm", "base_seed", "B",
@@ -388,7 +390,7 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
   }
 
   if (verbose) {
-    cat(sprintf("Scenario: M=%d, B=%d (copula only), n_per_arm=%d, %d cores\n",
+    message(sprintf("Scenario: M=%d, B=%d (copula only), n_per_arm=%d, %d cores\n",
                 M, B, n_per_arm, n_cores))
     t0 <- Sys.time()
   }
@@ -397,8 +399,10 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
     cl <- makeCluster(n_cores)
     on.exit(stopCluster(cl), add = TRUE)
     clusterEvalQ(cl, {
-      library(MASS); library(mvtnorm); library(dplyr)
-      library(survival); library(copula); library(tumourSim)
+      requireNamespace("MASS", quietly = TRUE)
+      requireNamespace("mvtnorm", quietly = TRUE)
+      requireNamespace("survival", quietly = TRUE)
+      requireNamespace("copula", quietly = TRUE)
     })
     clusterExport(cl,
                   varlist = c("n_per_arm", "mean_ctrl", "mean_trt", "cov_mat",
@@ -418,7 +422,7 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
 
   if (verbose) {
     el <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    cat(sprintf("  done in %.1f min (%.2f s/rep)\n", el / 60, el / M))
+    message(sprintf("  done in %.1f min (%.2f s/rep)\n", el / 60, el / M))
   }
 
   pmat <- do.call(rbind, out)
@@ -473,7 +477,7 @@ run_all_scenarios <- function(scenarios, cov_mat,
   for (s in seq_along(scenarios)) {
     sc <- scenarios[[s]]
     mean_ctrl <- sc$mean_trt + (sc$ctrl_shift %||% 0)
-    cat(sprintf("\n=== [%d/%d] %s ===\n", s, length(scenarios), sc$name))
+    message(sprintf("\n=== [%d/%d] %s ===\n", s, length(scenarios), sc$name))
     res <- run_scenario(
       M = M, B = B, n_per_arm = n_per_arm,
       mean_ctrl = mean_ctrl, mean_trt = sc$mean_trt,
@@ -501,7 +505,7 @@ run_all_scenarios <- function(scenarios, cov_mat,
     saveRDS(results,
             file.path(checkpoint_dir,
                       sprintf("checkpoint_through_scenario_%d.rds", s)))
-    cat(sprintf("  KM = %.3f   AugBin = %.3f   Copula = %.3f\n",
+    message(sprintf("  KM = %.3f   AugBin = %.3f   Copula = %.3f\n",
                 res$power_km, res$power_augbin, res$power_copula))
   }
 
@@ -551,7 +555,7 @@ simulate_metrics_all <- function(M = 1000, B = 200, n_patients = 150,
                                  true_S = NULL, verbose = TRUE) {
 
   if (is.null(true_S)) {
-    if (verbose) cat("Computing true PFS via large simulation...\n")
+    if (verbose) message("Computing true PFS via large simulation...\n")
     true_S <- true_pfs(grid, mean = mean, covariance = covariance,
                        threshold = threshold,
                        alpha = alpha_lesion, beta = beta_lesion,
@@ -571,7 +575,7 @@ simulate_metrics_all <- function(M = 1000, B = 200, n_patients = 150,
   aic_cop   <- stats::setNames(lapply(families, function(f) numeric(M)),             families)
 
   for (m in seq_len(M)) {
-    if (verbose && m %% 50 == 0) cat("Replication", m, "/", M, "\n")
+    if (verbose && m %% 50 == 0) message("Replication", m, "/", M, "\n")
 
     ts <- tumour_events(n_patients, mean, covariance, threshold)
     ls <- lesion_events(n_patients, ts$log_ratios_vs_baseline,
@@ -696,7 +700,7 @@ evaluate_augbin_parallel <- function(M = 1000, B = 200, n_patients, mean_vec, co
   }
 
   if (verbose) {
-    cat(sprintf("Running M = %d, B = %d on %d core(s)...\n", M, B, n_cores))
+    message(sprintf("Running M = %d, B = %d on %d core(s)...\n", M, B, n_cores))
     t0 <- Sys.time()
   }
 
@@ -704,7 +708,10 @@ evaluate_augbin_parallel <- function(M = 1000, B = 200, n_patients, mean_vec, co
     cl <- makeCluster(n_cores)
     on.exit(stopCluster(cl), add = TRUE)
     clusterEvalQ(cl, {
-      library(MASS); library(mvtnorm); library(dplyr); library(tumourSim)
+      requireNamespace("MASS", quietly = TRUE)
+      requireNamespace("mvtnorm", quietly = TRUE)
+      requireNamespace("survival", quietly = TRUE)
+      requireNamespace("copula", quietly = TRUE)
     })
     clusterExport(cl,
                   varlist = c("n_patients", "mean_vec", "cov_mat", "S_true",
@@ -720,7 +727,7 @@ evaluate_augbin_parallel <- function(M = 1000, B = 200, n_patients, mean_vec, co
 
   if (verbose) {
     el <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    cat(sprintf("Done in %.1f min (%.2f s/replicate).\n", el / 60, el / M))
+    message(sprintf("Done in %.1f min (%.2f s/replicate).\n", el / 60, el / M))
   }
 
   point_est <- do.call(rbind, lapply(out, `[[`, "point"))
