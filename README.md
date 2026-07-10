@@ -2,7 +2,7 @@
 
 ### Applications to Colorectal Cancer Clinical Trials
 
-> A novel statistical framework that improves survival prediction in oncology trials by modelling the *dependence* between tumour growth and the appearance of new lesions — going beyond what Kaplan–Meier and augmented-binary methods can offer.
+> A novel statistical framework that improves survival prediction in oncology trials by modelling the dependence between tumour growth and the appearance of new lesions, offering new insights compared to what the Kaplan–Meier and augmented-binary methods can offer.
 
 ------------------------------------------------------------------------
 
@@ -13,7 +13,7 @@ Clinical trials in oncology typically produce two distinct types of progression 
 1.  **A continuous measurement** — the sum of the longest tumour diameters (SLD), tracked longitudinally.
 2.  **A binary indicator** — whether a new lesion has appeared at a follow-up visit.
 
-Under the **RECIST** framework, *either* of these crossing a threshold counts as a progression event. Standard methods (Kaplan–Meier, augmented-binary) treat the composite endpoint marginally and **discard the joint structure** between these two signals.
+Under the **RECIST** framework, either of these crossing a threshold counts as a progression event. Standard methods (Kaplan–Meier, augmented-binary) treat the composite endpoint marginally and **discard the joint structure** between these two signals.
 
 This project develops and evaluates a **copula-based joint survival model** that explicitly captures the dependence between the two endpoints, yielding:
 
@@ -35,7 +35,7 @@ In a stratified analysis of the PRIME colorectal cancer trial, the copula-based 
 ### Simulation study highlights
 
 | Scenario | Kaplan–Meier | Augmented-Binary | **Copula (Gumbel)** |
-|----|:--:|:--:|:--:|
+|------------------|:----------------:|:----------------:|:----------------:|
 | Type I error (null) | 0.040 | 0.045 | **0.045** ✓ |
 | Heavy-tail null | 0.055 | **0.174** ✗ inflated | **0.046** ✓ |
 | Small treatment effect | 0.371 | 0.405 | **0.395** |
