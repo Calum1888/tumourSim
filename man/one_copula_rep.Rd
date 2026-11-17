@@ -35,3 +35,4 @@ treatment arm under a scenario, fits per-arm copula PFS curves with
 bootstrap standard errors, and returns the difference Delta and its
 standard error at each grid point.
 }
+\keyword{internal}

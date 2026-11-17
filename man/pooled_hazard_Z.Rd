@@ -22,3 +22,4 @@ where \eqn{h_r(t) = 1 - S_r(t)/S_r(t-1)} is the discrete hazard in arm
 \eqn{r} and \eqn{\tau} is the largest visit at which both arms are
 still at risk (\code{\link{choose_tau}}).
 }
+\keyword{internal}

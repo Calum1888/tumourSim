@@ -24,7 +24,7 @@
 #'   Returns 0 if either arm has \eqn{S_r(0) = 1} immediately followed by
 #'   a zero survival at visit 1 (degenerate case).
 #'
-#' @export
+#' @keywords internal
 choose_tau <- function(S0, S1) {
   T_visits <- length(S0)
   tau <- 0
@@ -50,7 +50,7 @@ choose_tau <- function(S0, S1) {
 #' @return Numeric vector of discrete hazards, with \code{NA_real_} for
 #'   any visit where the prior survival was already zero.
 #'
-#' @export
+#' @keywords internal
 discrete_hazards <- function(S) {
   T_visits <- length(S)
   h <- numeric(T_visits)
@@ -79,7 +79,7 @@ discrete_hazards <- function(S) {
 #' @return A list with elements \code{Z} (the statistic, or
 #'   \code{NA_real_} if any hazard is non-finite) and \code{tau}.
 #'
-#' @export
+#' @keywords internal
 pooled_hazard_Z <- function(S0, S1) {
   tau <- choose_tau(S0, S1)
   if (tau < 1) return(list(Z = NA_real_, tau = tau))
@@ -113,7 +113,7 @@ pooled_hazard_Z <- function(S0, S1) {
 #' @return Numeric vector of length \code{T_visits}; the gradient is zero
 #'   in positions beyond \eqn{\tau}.
 #'
-#' @export
+#' @keywords internal
 gradZ_wrt_S_arm <- function(S, tau, arm_sign) {
   T_visits <- length(S)
   g <- numeric(T_visits)

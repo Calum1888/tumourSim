@@ -22,3 +22,4 @@ Returns the largest visit \eqn{\tau} such that \eqn{S_0(t-1) > 0} and
 which the discrete hazards \eqn{h_r(t) = 1 - S_r(t)/S_r(t-1)} are
 well-defined for both arms.
 }
+\keyword{internal}

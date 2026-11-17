@@ -34,3 +34,4 @@ two-arm Wald tests on the survival difference at a chosen visit.
 \seealso{
 \code{\link{pfs_copula}}, \code{\link{run_copula_power}}
 }
+\keyword{internal}

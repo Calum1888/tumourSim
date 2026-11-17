@@ -30,3 +30,4 @@ of \eqn{h(s)} (contributes \eqn{-1/S(s-1)}) and as the denominator of
 \eqn{h(s+1)} (contributes \eqn{S(s+1)/S(s)^2}, only when
 \eqn{s + 1 \le \tau}).
 }
+\keyword{internal}

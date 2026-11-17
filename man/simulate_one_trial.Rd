@@ -28,3 +28,4 @@ Simulates a two-arm trial under a single scenario specification and
 returns the log-rank p-value on the composite endpoint. Used as the
 inner loop of \code{\link{run_power_study}}.
 }
+\keyword{internal}

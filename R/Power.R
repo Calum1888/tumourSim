@@ -33,7 +33,7 @@
 #'
 #' @importFrom survival survdiff Surv
 #' @importFrom stats pchisq
-#' @export
+#' @keywords internal
 simulate_one_trial <- function(s, n_per_arm, defaults) {
 
   mean_vec <- if (!is.null(s$mean_vec))   s$mean_vec   else defaults$mean
@@ -176,7 +176,7 @@ run_power_study <- function(scenarios, defaults, M = 1000, n_per_arm = 150,
 #'   vectors of length \code{length(grid)}; both \code{NA_real_} if a
 #'   per-arm copula fit failed.
 #'
-#' @export
+#' @keywords internal
 one_copula_rep <- function(m, s, n_per_arm, base_seed, B, family,
                            defaults, grid) {
 

@@ -21,3 +21,4 @@ nadirs, events, lesion events, lesion tumour sizes). Useful for
 patient-level bootstrap variance estimation that needs to keep
 tumour and lesion components aligned within patients.
 }
+\keyword{internal}

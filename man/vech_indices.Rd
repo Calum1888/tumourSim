@@ -18,3 +18,4 @@ Returns the (row, column) index pairs corresponding to the entries of
 \code{\link{vech}} for a \code{T_visits} x \code{T_visits} symmetric
 matrix.
 }
+\keyword{internal}

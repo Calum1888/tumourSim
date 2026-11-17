@@ -422,7 +422,7 @@ vech <- function(M) M[lower.tri(M, diag = TRUE)]
 #' @return An integer matrix with two columns (\code{row}, \code{col}) and
 #'   \eqn{T(T+1)/2} rows.
 #'
-#' @export
+#' @keywords internal
 vech_indices <- function(T_visits) {
   which(lower.tri(matrix(0, T_visits, T_visits), diag = TRUE), arr.ind = TRUE)
 }

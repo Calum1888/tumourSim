@@ -18,3 +18,4 @@ Numeric vector of discrete hazards, with \code{NA_real_} for
 Computes the discrete hazards \eqn{h(t) = 1 - S(t)/S(t-1)} for
 \eqn{t = 1, \ldots, T}, with \eqn{S(0) = 1} by convention.
 }
+\keyword{internal}

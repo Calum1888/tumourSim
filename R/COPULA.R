@@ -418,7 +418,7 @@ pfs_copula_arm_S <- function(arm_data, T_visits, family = "gumbel") {
 #' @seealso \code{\link{pfs_copula}}, \code{\link{run_copula_power}}
 #'
 #' @importFrom stats sd
-#' @export
+#' @keywords internal
 copula_arm <- function(t_events, l_events, grid,
                        family = "gumbel", B = 200, cens_at = Inf) {
   stopifnot(
@@ -710,7 +710,7 @@ copula_test <- function(trial, B = 200, grid = 1:5, family = "gumbel") {
 #' @return An arm list of the same shape with rows resampled with
 #'   replacement.
 #'
-#' @export
+#' @keywords internal
 resample_arm <- function(arm_data) {
   n <- nrow(arm_data$tumour$events)
   idx <- sample.int(n, n, replace = TRUE)
