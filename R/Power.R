@@ -234,7 +234,7 @@ one_copula_rep <- function(m, s, n_per_arm, base_seed, B, family,
 #' @param grid Numeric vector of evaluation visits. Defaults to \code{1:5}.
 #' @param base_seed Integer.
 #' @param n_cores Integer. Number of parallel workers. \code{NULL} uses
-#'   \code{detectCores() - 1}.
+#'   single core.
 #' @param verbose Logical.
 #'
 #' @return A \code{data.frame} with columns \code{scenario},
@@ -270,7 +270,7 @@ run_copula_power <- function(scenarios, defaults,
                              grid = 1:5, base_seed = 1, n_cores = NULL,
                              verbose = TRUE) {
 
-  if (is.null(n_cores)) n_cores <- max(1, detectCores() - 1)
+  if (is.null(n_cores)) n_cores <- 1
 
   results <- data.frame(
     scenario  = character(),
@@ -406,7 +406,7 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
   augbin_test      <- match.arg(augbin_test)
   copula_test_type <- match.arg(copula_test_type)
 
-  if (is.null(n_cores)) n_cores <- max(1, detectCores() - 1)
+  if (is.null(n_cores)) n_cores <- 1
   T_visits <- length(mean_ctrl)
 
   one_rep <- function(m) {
@@ -762,7 +762,7 @@ evaluate_augbin_parallel <- function(M = 1000, B = 200, n_patients, mean_vec, co
                                      base_seed = 1, n_cores = NULL,
                                      verbose = TRUE) {
 
-  if (is.null(n_cores)) n_cores <- max(1, detectCores() - 1)
+  if (is.null(n_cores)) n_cores <- 1
   T_visits  <- length(mean_vec)
   treatment <- rep(treatment_arm, n_patients)
 

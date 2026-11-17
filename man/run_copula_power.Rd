@@ -43,7 +43,7 @@ Defaults to 5.}
 \item{base_seed}{Integer.}
 
 \item{n_cores}{Integer. Number of parallel workers. \code{NULL} uses
-\code{detectCores() - 1}.}
+single core.}
 
 \item{verbose}{Logical.}
 }
