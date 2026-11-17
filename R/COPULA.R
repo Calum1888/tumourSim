@@ -505,7 +505,21 @@ L1_stat_from_S <- function(S0, S1, trial) {
 #'
 #' @return A scalar L1 statistic, or \code{NA_real_} if a per-arm fit
 #'   contained \code{NA}s.
+#' 
+#' @examples
+#' set.seed(1)
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' trial <- simulate_trial(n_per_arm = 50, mu_ctrl = mu_ctrl,
+#'                         mu_trt = mu_trt, cov_mat = Sigma,
+#'                         beta_lesion = 0, gamma_lesion = 0.2)
 #'
+#' # Observed L1 distance between the arm-specific copula PFS curves
+#' copula_L1_stat(trial, T_visits = 5, family = "gumbel")
+#'
+#' # See copula_L1_permutation_test() for the corresponding p-value
 #' @export
 copula_L1_stat <- function(trial, T_visits, family = "gumbel") {
   S0 <- pfs_copula_arm_S(trial$ctrl, T_visits, family)
@@ -614,6 +628,21 @@ copula_L1_permutation_test <- function(trial, T_visits, B = 200,
 #' @param family Character copula family. Defaults to \code{"gumbel"}.
 #'
 #' @return A scalar max-difference statistic.
+#' 
+#' @examples
+#' set.seed(1)
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' trial <- simulate_trial(n_per_arm = 50, mu_ctrl = mu_ctrl,
+#'                         mu_trt = mu_trt, cov_mat = Sigma,
+#'                         beta_lesion = 0, gamma_lesion = 0.2)
+#'
+#' # Largest absolute gap between the arm-specific copula PFS curves
+#' copula_delta_stat(trial, grid = 1:5, family = "gumbel")
+#'
+#' # See copula_test() for the corresponding permutation p-value
 #'
 #' @export
 copula_delta_stat <- function(trial, grid = 1:5, family = "gumbel") {
