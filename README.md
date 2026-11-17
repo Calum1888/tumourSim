@@ -48,7 +48,7 @@ The copula approach **controls Type I error under heavy-tailed tumour dynamics**
 
 <p align="center">
 
-<img src="Plots/KM_GRAPH_7.png" alt="Kaplan-Meier" width="32%"/> <img src="Plots/AUGBIN_GRAPH_7.png" alt="Augmented-Binary" width="32%"/> <img src="Plots/COPULA_GRAPH_7.png" alt="Gumbel Copula" width="32%"/>
+<img src="plots/KM_GRAPH_7.png" alt="Kaplan-Meier" width="32%"/> <img src="plots/AUGBIN_GRAPH_7.png" alt="Augmented-Binary" width="32%"/> <img src="plots/COPULA_GRAPH_7.png" alt="Gumbel Copula" width="32%"/>
 
 </p>
 
@@ -60,7 +60,7 @@ The Gumbel copula consistently achieves **narrower confidence intervals than Kap
 
 <p align="center">
 
-<img src="Plots/km_trt_by_KRAS.png" alt="Kaplan-Meier by KRAS type" width="48%"/> <img src="Plots/cop_trt_strat_by_KRAS.png" alt="Copula by KRAS type" width="48%"/>
+<img src="plots/KM_TRT_BY_KRAS.png" alt="Kaplan-Meier by KRAS type" width="48%"/> <img src="plots/COP_TRT_STRAT_BY_KRAS.png" alt="Copula by KRAS type" width="48%"/>
 
 </p>
 
