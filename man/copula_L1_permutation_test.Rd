@@ -43,3 +43,18 @@ Under the null of identical joint distributions across arms,
   has non-trivial power against crossings of the survival curves
   where signed tests cancel.
 }
+\examples{
+set.seed(1)
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+trial <- simulate_trial(n_per_arm = 50, mu_ctrl = mu_ctrl,
+                        mu_trt = mu_trt, cov_mat = Sigma,
+                        beta_lesion = 0, gamma_lesion = 0.2)
+\donttest{
+# B = 10 keeps the example quick; use B >= 200 in practice
+copula_L1_permutation_test(trial, T_visits = 5, B = 10)
+}
+
+}

@@ -81,3 +81,17 @@ three tests (KM log-rank, AugBin pooled-hazard with delta variance,
 copula L1 permutation) to each replicate. Returns rejection rates and
 the raw matrix of p-values.
 }
+\examples{
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+\donttest{
+# Tiny M and B for illustration; use M >= 1000, B >= 200 in practice
+res <- run_scenario(M = 2, B = 10, n_per_arm = 50,
+                    mean_ctrl = mu_ctrl, mean_trt = mu_trt,
+                    cov_mat = Sigma, n_cores = 1, verbose = FALSE)
+res[c("power_km", "power_augbin", "power_copula")]
+}
+
+}

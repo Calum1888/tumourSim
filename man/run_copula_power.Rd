@@ -61,3 +61,20 @@ model.
 For scenarios with administrative censoring before
   \code{test_visit}, the test is performed at \code{min(test_visit, cens_at)}.
 }
+\examples{
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+defaults <- list(mean = mu_ctrl, covariance = Sigma, threshold = 1.2,
+                 alpha = -2.5, gamma = 0.2)
+scenarios <- list(
+  null   = list(label = "Null",         beta = 0),
+  effect = list(label = "Small effect", beta = -0.5)
+)
+\donttest{
+run_copula_power(scenarios, defaults, M = 2, B = 10, n_per_arm = 50,
+                 n_cores = 1, verbose = FALSE)
+}
+
+}

@@ -12,7 +12,7 @@ run_all_scenarios(
   n_per_arm = 200,
   n_cores = NULL,
   base_seed = 1,
-  checkpoint_dir = ".",
+  checkpoint_dir = NULL,
   ...
 )
 }
@@ -38,8 +38,9 @@ test. Defaults to 200.}
 
 \item{base_seed}{Integer.}
 
-\item{checkpoint_dir}{Character. Directory for the checkpoint
-\code{.rds} files. Defaults to \code{"."}.}
+\item{checkpoint_dir}{Character or \code{NULL}. Directory in which to
+write a checkpoint \code{.rds} file after each scenario. Defaults to
+\code{NULL} (no checkpoints are written).}
 
 \item{...}{Further arguments passed through to
 \code{\link{run_scenario}}.}
@@ -53,6 +54,25 @@ A list with elements \code{table} (a \code{data.frame} with
 \description{
 Loops over a list of two-arm scenarios, calls
 \code{\link{run_scenario}} for each, and assembles a tidy power table.
-Intermediate results are written to disk as \code{.rds} files after
-each scenario so long runs can be inspected or resumed.
+If \code{checkpoint_dir} is supplied, intermediate results are written
+there as \code{.rds} files after each scenario so long runs can be
+inspected or resumed.
+}
+\examples{
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+scenarios <- list(
+  list(name = "Null",         mean_trt = mu_trt, ctrl_shift = 0,   beta = 0),
+  list(name = "Small effect", mean_trt = mu_trt, ctrl_shift = 0.1, beta = -0.5)
+)
+\donttest{
+# Tiny M and B for illustration; use M >= 1000, B >= 200 in practice
+res <- run_all_scenarios(scenarios, cov_mat = Sigma, M = 1, B = 5,
+                         n_per_arm = 40, n_cores = 1,
+                         checkpoint_dir = tempdir(), verbose = FALSE)
+res$table
+}
+
 }

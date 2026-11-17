@@ -540,6 +540,20 @@ copula_L1_stat <- function(trial, T_visits, family = "gumbel") {
 #'   has non-trivial power against crossings of the survival curves
 #'   where signed tests cancel.
 #'
+#' @examples
+#' set.seed(1)
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' trial <- simulate_trial(n_per_arm = 50, mu_ctrl = mu_ctrl,
+#'                         mu_trt = mu_trt, cov_mat = Sigma,
+#'                         beta_lesion = 0, gamma_lesion = 0.2)
+#' \donttest{
+#' # B = 10 keeps the example quick; use B >= 200 in practice
+#' copula_L1_permutation_test(trial, T_visits = 5, B = 10)
+#' }
+#'
 #' @export
 copula_L1_permutation_test <- function(trial, T_visits, B = 200,
                                        family = "gumbel",
@@ -621,6 +635,20 @@ copula_delta_stat <- function(trial, grid = 1:5, family = "gumbel") {
 #' @param family Character copula family.
 #'
 #' @return A scalar permutation p-value.
+#'
+#' @examples
+#' set.seed(1)
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' trial <- simulate_trial(n_per_arm = 50, mu_ctrl = mu_ctrl,
+#'                         mu_trt = mu_trt, cov_mat = Sigma,
+#'                         beta_lesion = 0, gamma_lesion = 0.2)
+#' \donttest{
+#' # B = 10 keeps the example quick; use B >= 200 in practice
+#' copula_test(trial, B = 10, grid = 1:5, family = "gumbel")
+#' }
 #'
 #' @export
 copula_test <- function(trial, B = 200, grid = 1:5, family = "gumbel") {

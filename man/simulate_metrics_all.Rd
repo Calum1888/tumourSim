@@ -55,3 +55,16 @@ estimator of PFS on the composite endpoint against the copula-based
 estimator from \code{\link{pfs_copula_boot}} across one or more
 copula families.
 }
+\examples{
+mu    <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+\donttest{
+res <- simulate_metrics_all(M = 2, B = 10, n_patients = 50,
+                            mean = mu, covariance = Sigma,
+                            threshold = 1.2, families = "gumbel",
+                            verbose = FALSE)
+res$summary
+}
+
+}

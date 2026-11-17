@@ -42,3 +42,20 @@ Kaplan-Meier log-rank test as the test statistic. For each scenario,
 and the empirical rejection rate is reported alongside a Monte Carlo
 standard error.
 }
+\examples{
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+defaults <- list(mean = mu_ctrl, covariance = Sigma, threshold = 1.2,
+                 alpha = -2.5, gamma = 0.2)
+scenarios <- list(
+  null   = list(label = "Null",         beta = 0),
+  effect = list(label = "Small effect", beta = -0.5)
+)
+\donttest{
+run_power_study(scenarios, defaults, M = 20, n_per_arm = 50,
+                verbose = FALSE)
+}
+
+}

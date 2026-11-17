@@ -58,3 +58,18 @@ replication is seeded for reproducibility regardless of platform or
 core count. Returns mean point estimate, bias, coverage rate, mean CI
 width, and Monte Carlo standard errors for each.
 }
+\examples{
+mu    <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+\donttest{
+S_true <- true_pfs(1:5, mu = mu, covariance = Sigma, threshold = 1.2,
+                   n_big = 2000)
+res <- evaluate_augbin_parallel(M = 2, B = 10, n_patients = 50,
+                                mean_vec = mu, cov_mat = Sigma,
+                                S_true = S_true, n_cores = 1,
+                                verbose = FALSE)
+res$coverage_rate
+}
+
+}

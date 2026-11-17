@@ -23,3 +23,18 @@ One-sided permutation p-value for the max-difference statistic
 \code{\link{copula_delta_stat}}. Arm labels are shuffled without
 replacement and the copula is refit on each permutation.
 }
+\examples{
+set.seed(1)
+mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+Sigma <- matrix(0.05, 5, 5)
+diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+trial <- simulate_trial(n_per_arm = 50, mu_ctrl = mu_ctrl,
+                        mu_trt = mu_trt, cov_mat = Sigma,
+                        beta_lesion = 0, gamma_lesion = 0.2)
+\donttest{
+# B = 10 keeps the example quick; use B >= 200 in practice
+copula_test(trial, B = 10, grid = 1:5, family = "gumbel")
+}
+
+}

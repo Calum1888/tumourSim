@@ -99,6 +99,22 @@ simulate_one_trial <- function(s, n_per_arm, defaults) {
 #' @return A \code{data.frame} with one row per scenario and columns
 #'   \code{scenario}, \code{rejection}, \code{mc_se}, \code{n_valid}.
 #'
+#' @examples
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' defaults <- list(mean = mu_ctrl, covariance = Sigma, threshold = 1.2,
+#'                  alpha = -2.5, gamma = 0.2)
+#' scenarios <- list(
+#'   null   = list(label = "Null",         beta = 0),
+#'   effect = list(label = "Small effect", beta = -0.5)
+#' )
+#' \donttest{
+#' run_power_study(scenarios, defaults, M = 20, n_per_arm = 50,
+#'                 verbose = FALSE)
+#' }
+#'
 #' @export
 run_power_study <- function(scenarios, defaults, M = 1000, n_per_arm = 150,
                             alpha_level = 0.05, verbose = TRUE) {
@@ -227,6 +243,22 @@ one_copula_rep <- function(m, s, n_per_arm, base_seed, B, family,
 #' @details For scenarios with administrative censoring before
 #'   \code{test_visit}, the test is performed at \code{min(test_visit, cens_at)}.
 #'
+#' @examples
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' defaults <- list(mean = mu_ctrl, covariance = Sigma, threshold = 1.2,
+#'                  alpha = -2.5, gamma = 0.2)
+#' scenarios <- list(
+#'   null   = list(label = "Null",         beta = 0),
+#'   effect = list(label = "Small effect", beta = -0.5)
+#' )
+#' \donttest{
+#' run_copula_power(scenarios, defaults, M = 2, B = 10, n_per_arm = 50,
+#'                  n_cores = 1, verbose = FALSE)
+#' }
+#'
 #' @importFrom parallel detectCores makeCluster stopCluster clusterEvalQ clusterExport
 #' @importFrom pbapply pblapply
 #' @importFrom stats qnorm
@@ -339,6 +371,19 @@ run_copula_power <- function(scenarios, defaults,
 #' @return A list with elements \code{power_km}, \code{power_augbin},
 #'   \code{power_copula}, \code{n_failed}, and \code{pvalues}.
 #'
+#' @examples
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' \donttest{
+#' # Tiny M and B for illustration; use M >= 1000, B >= 200 in practice
+#' res <- run_scenario(M = 2, B = 10, n_per_arm = 50,
+#'                     mean_ctrl = mu_ctrl, mean_trt = mu_trt,
+#'                     cov_mat = Sigma, n_cores = 1, verbose = FALSE)
+#' res[c("power_km", "power_augbin", "power_copula")]
+#' }
+#'
 #' @importFrom parallel detectCores makeCluster stopCluster clusterEvalQ clusterExport
 #' @importFrom pbapply pblapply
 #' @export
@@ -440,8 +485,9 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
 #'
 #' Loops over a list of two-arm scenarios, calls
 #' \code{\link{run_scenario}} for each, and assembles a tidy power table.
-#' Intermediate results are written to disk as \code{.rds} files after
-#' each scenario so long runs can be inspected or resumed.
+#' If \code{checkpoint_dir} is supplied, intermediate results are written
+#' there as \code{.rds} files after each scenario so long runs can be
+#' inspected or resumed.
 #'
 #' @param scenarios A list of scenario specifications. Each entry must
 #'   contain \code{name}, \code{mean_trt}, \code{ctrl_shift} (added to
@@ -457,8 +503,9 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
 #' @param n_per_arm Integer. Patients per arm. Defaults to 200.
 #' @param n_cores Integer or \code{NULL}.
 #' @param base_seed Integer.
-#' @param checkpoint_dir Character. Directory for the checkpoint
-#'   \code{.rds} files. Defaults to \code{"."}.
+#' @param checkpoint_dir Character or \code{NULL}. Directory in which to
+#'   write a checkpoint \code{.rds} file after each scenario. Defaults to
+#'   \code{NULL} (no checkpoints are written).
 #' @param ... Further arguments passed through to
 #'   \code{\link{run_scenario}}.
 #'
@@ -467,11 +514,28 @@ run_scenario <- function(M, B, n_per_arm, mean_ctrl, mean_trt, cov_mat,
 #'   \code{power_augbin}, \code{power_copula}) and \code{raw} (the full
 #'   per-scenario result lists).
 #'
+#' @examples
+#' mu_ctrl <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' mu_trt  <- c(-0.20, -0.40, -0.56, -0.60, -0.65)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' scenarios <- list(
+#'   list(name = "Null",         mean_trt = mu_trt, ctrl_shift = 0,   beta = 0),
+#'   list(name = "Small effect", mean_trt = mu_trt, ctrl_shift = 0.1, beta = -0.5)
+#' )
+#' \donttest{
+#' # Tiny M and B for illustration; use M >= 1000, B >= 200 in practice
+#' res <- run_all_scenarios(scenarios, cov_mat = Sigma, M = 1, B = 5,
+#'                          n_per_arm = 40, n_cores = 1,
+#'                          checkpoint_dir = tempdir(), verbose = FALSE)
+#' res$table
+#' }
+#'
 #' @export
 run_all_scenarios <- function(scenarios, cov_mat,
                               M = 1000, B = 200, n_per_arm = 200,
                               n_cores = NULL, base_seed = 1,
-                              checkpoint_dir = ".", ...) {
+                              checkpoint_dir = NULL, ...) {
 
   results <- vector("list", length(scenarios))
   for (s in seq_along(scenarios)) {
@@ -502,9 +566,11 @@ run_all_scenarios <- function(scenarios, cov_mat,
       power_copula = res$power_copula,
       n_failed     = res$n_failed
     )
-    saveRDS(results,
-            file.path(checkpoint_dir,
-                      sprintf("checkpoint_through_scenario_%d.rds", s)))
+    if (!is.null(checkpoint_dir)) {
+      saveRDS(results,
+              file.path(checkpoint_dir,
+                        sprintf("checkpoint_through_scenario_%d.rds", s)))
+    }
     message(sprintf("  KM = %.3f   AugBin = %.3f   Copula = %.3f\n",
                 res$power_km, res$power_augbin, res$power_copula))
   }
@@ -543,6 +609,18 @@ run_all_scenarios <- function(scenarios, cov_mat,
 #' @return A list with elements \code{summary} (long-format
 #'   \code{data.frame}) and \code{raw} (per-replication matrices and
 #'   per-family lists).
+#'
+#' @examples
+#' mu    <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' \donttest{
+#' res <- simulate_metrics_all(M = 2, B = 10, n_patients = 50,
+#'                             mean = mu, covariance = Sigma,
+#'                             threshold = 1.2, families = "gumbel",
+#'                             verbose = FALSE)
+#' res$summary
+#' }
 #'
 #' @importFrom survival survfit Surv
 #' @export
@@ -659,6 +737,20 @@ simulate_metrics_all <- function(M = 1000, B = 200, n_patients = 150,
 #'   \code{coverage_rate}, \code{avg_ci_width},
 #'   \code{mc_se_estimate}, \code{mc_se_coverage}, \code{mc_se_width},
 #'   \code{n_failed}.
+#'
+#' @examples
+#' mu    <- c(-0.10, -0.30, -0.46, -0.50, -0.55)
+#' Sigma <- matrix(0.05, 5, 5)
+#' diag(Sigma) <- c(0.05, 0.10, 0.14, 0.16, 0.18)
+#' \donttest{
+#' S_true <- true_pfs(1:5, mu = mu, covariance = Sigma, threshold = 1.2,
+#'                    n_big = 2000)
+#' res <- evaluate_augbin_parallel(M = 2, B = 10, n_patients = 50,
+#'                                 mean_vec = mu, cov_mat = Sigma,
+#'                                 S_true = S_true, n_cores = 1,
+#'                                 verbose = FALSE)
+#' res$coverage_rate
+#' }
 #'
 #' @importFrom parallel detectCores makeCluster stopCluster clusterEvalQ clusterExport
 #' @importFrom pbapply pblapply
