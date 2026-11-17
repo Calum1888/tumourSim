@@ -569,6 +569,7 @@ copula_L1_stat <- function(trial, T_visits, family = "gumbel") {
 #' }
 #'
 #' @export
+#' 
 copula_L1_permutation_test <- function(trial, T_visits, B = 200,
                                        family = "gumbel",
                                        min_success_frac = 0.2) {
@@ -645,6 +646,7 @@ copula_L1_permutation_test <- function(trial, T_visits, B = 200,
 #' # See copula_test() for the corresponding permutation p-value
 #'
 #' @export
+#' 
 copula_delta_stat <- function(trial, grid = 1:5, family = "gumbel") {
   S_c <- pfs_copula_arm_S(trial$ctrl, length(grid), family)
   S_t <- pfs_copula_arm_S(trial$trt,  length(grid), family)
