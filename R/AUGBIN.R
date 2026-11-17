@@ -127,7 +127,7 @@ S_lesion_from_params <- function(beta, fit, lesion_out, treatment) {
   df$prob_no <- 1 - plogis(eta)
 
   # Bind variables to silence R CMD check NOTEs
-  id <- time <- prob_no <- S_indiv <- NULL
+  id <- time <- prob_no <- S_indiv <- S <- NULL
 
   df %>%
     arrange(id, time) %>%

@@ -35,62 +35,81 @@ export(true_pfs)
 export(tumour_events)
 export(vech_indices)
 importFrom(MASS,mvrnorm)
-importFrom(VineCopula,BiCopCDF)
-importFrom(VineCopula,BiCopSelect)
-importFrom(copula,claytonCopula)
-importFrom(copula,fitCopula)
-importFrom(copula,frankCopula)
-importFrom(copula,gumbelCopula)
-importFrom(copula,pCopula)
-importFrom(dplyr,"%>%")
-importFrom(dplyr,arrange)
-importFrom(dplyr,group_by)
-importFrom(dplyr,mutate)
-importFrom(dplyr,pull)
-importFrom(dplyr,summarise)
-importFrom(dplyr,ungroup)
-importFrom(ggplot2,aes)
-importFrom(ggplot2,element_blank)
-importFrom(ggplot2,element_line)
-importFrom(ggplot2,element_text)
-importFrom(ggplot2,geom_line)
-importFrom(ggplot2,geom_point)
-importFrom(ggplot2,geom_ribbon)
-importFrom(ggplot2,ggplot)
-importFrom(ggplot2,labs)
-importFrom(ggplot2,scale_x_continuous)
-importFrom(ggplot2,scale_y_continuous)
-importFrom(ggplot2,theme)
-importFrom(ggplot2,theme_minimal)
-importFrom(mvtnorm,pmvnorm)
-importFrom(mvtnorm,rmvt)
-importFrom(parallel,clusterEvalQ)
-importFrom(parallel,clusterExport)
-importFrom(parallel,detectCores)
-importFrom(parallel,makeCluster)
-importFrom(parallel,stopCluster)
-importFrom(patchwork,plot_annotation)
-importFrom(patchwork,wrap_plots)
+importFrom(VineCopula,
+  BiCopCDF,
+  BiCopSelect
+)
+importFrom(copula,
+  claytonCopula,
+  fitCopula,
+  frankCopula,
+  gumbelCopula,
+  pCopula
+)
+importFrom(dplyr,
+  "%>%",
+  arrange,
+  group_by,
+  mutate,
+  pull,
+  summarise,
+  ungroup
+)
+importFrom(ggplot2,
+  aes,
+  element_blank,
+  element_line,
+  element_text,
+  geom_line,
+  geom_point,
+  geom_ribbon,
+  ggplot,
+  labs,
+  scale_x_continuous,
+  scale_y_continuous,
+  theme,
+  theme_minimal
+)
+importFrom(mvtnorm,
+  pmvnorm,
+  rmvt
+)
+importFrom(parallel,
+  clusterEvalQ,
+  clusterExport,
+  detectCores,
+  makeCluster,
+  stopCluster
+)
+importFrom(patchwork,
+  plot_annotation,
+  wrap_plots
+)
 importFrom(pbapply,pblapply)
-importFrom(stats,AIC)
-importFrom(stats,as.formula)
-importFrom(stats,binomial)
-importFrom(stats,coef)
-importFrom(stats,cov)
-importFrom(stats,delete.response)
-importFrom(stats,glm)
-importFrom(stats,model.matrix)
-importFrom(stats,pchisq)
-importFrom(stats,plogis)
-importFrom(stats,pnorm)
-importFrom(stats,qnorm)
-importFrom(stats,quantile)
-importFrom(stats,rbinom)
-importFrom(stats,runif)
-importFrom(stats,sd)
-importFrom(stats,stepfun)
-importFrom(stats,terms)
-importFrom(stats,vcov)
-importFrom(survival,Surv)
-importFrom(survival,survdiff)
-importFrom(survival,survfit)
+importFrom(stats,
+  AIC,
+  as.formula,
+  binomial,
+  coef,
+  cov,
+  delete.response,
+  glm,
+  model.matrix,
+  pchisq,
+  plogis,
+  pnorm,
+  qnorm,
+  quantile,
+  rbinom,
+  runif,
+  sd,
+  stepfun,
+  terms,
+  vcov
+)
+importFrom(survival,
+  Surv,
+  survdiff,
+  survfit
+)
+importFrom(utils,head)

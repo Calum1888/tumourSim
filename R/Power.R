@@ -556,7 +556,7 @@ simulate_metrics_all <- function(M = 1000, B = 200, n_patients = 150,
 
   if (is.null(true_S)) {
     if (verbose) message("Computing true PFS via large simulation...\n")
-    true_S <- true_pfs(grid, mean = mean, covariance = covariance,
+    true_S <- true_pfs(grid, mu = mean, covariance = covariance,
                        threshold = threshold,
                        alpha = alpha_lesion, beta = beta_lesion,
                        gamma = gamma_lesion, treatment_arm = treatment_arm)

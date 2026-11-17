@@ -19,4 +19,9 @@ Useful links:
 \author{
 \strong{Maintainer}: Calum Regan \email{c_regan1888@outlook.com}
 
+Authors:
+\itemize{
+  \item Calum Regan \email{c_regan1888@outlook.com}
+}
+
 }

@@ -9,4 +9,5 @@
 #'   scale_y_continuous scale_x_continuous labs theme_minimal theme
 #'   element_text element_line element_blank
 #' @importFrom patchwork plot_annotation wrap_plots
+#' @importFrom utils head
 "_PACKAGE"

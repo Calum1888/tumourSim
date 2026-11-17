@@ -31,7 +31,6 @@ Description: Simulates and analyses progression-free survival in oncology trials
     dependent.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.3
 Imports:
     MASS,
     survival,
@@ -42,6 +41,8 @@ Imports:
     copula,
     dplyr,
     mvtnorm,
-    pbapply
+    pbapply,
+    parallel
 URL: https://github.com/Calum1888/tumourSim
 BugReports: https://github.com/Calum1888/tumourSim/issues
+Config/roxygen2/version: 8.1.1
